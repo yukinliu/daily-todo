@@ -7,24 +7,24 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f3dfbd;
-      --panel: #fffaf0;
-      --text: #352318;
-      --muted: #8a684f;
-      --line: #e3c89b;
-      --red-bg: #fff0e8;
-      --red-line: #b6402a;
-      --red-text: #8d2d20;
-      --green-bg: #eef4df;
-      --green-line: #4f8a69;
-      --green-text: #2e684e;
-      --accent: #b44b2b;
-      --accent-soft: #f7ddc5;
-      --gold-soft: #fff2c8;
-      --gold: #9f6718;
-      --teal: #2f7f78;
-      --teal-soft: #dceee5;
-      --shadow: 0 12px 28px rgba(83, 48, 22, 0.1);
+      --bg: #efd9b1;
+      --panel: #fffaf1;
+      --text: #332115;
+      --muted: #80634c;
+      --line: #dfc18b;
+      --red-bg: #fff3ec;
+      --red-line: #b94f32;
+      --red-text: #8f3225;
+      --green-bg: #edf4e4;
+      --green-line: #3f8567;
+      --green-text: #246950;
+      --accent: #b94f32;
+      --accent-soft: #f6ddc7;
+      --gold-soft: #fff0c0;
+      --gold: #94610f;
+      --teal: #287f74;
+      --teal-soft: #dcefe6;
+      --shadow: 0 14px 32px rgba(80, 49, 20, 0.11);
     }
 
     * {
@@ -35,8 +35,9 @@
       margin: 0;
       min-height: 100vh;
       background:
-        radial-gradient(circle at 12% 0%, rgba(180, 75, 43, 0.11), transparent 30%),
-        linear-gradient(180deg, #fff4dc, var(--bg));
+        radial-gradient(circle at 12% 0%, rgba(185, 79, 50, 0.1), transparent 31%),
+        radial-gradient(circle at 88% 12%, rgba(40, 127, 116, 0.07), transparent 28%),
+        linear-gradient(180deg, #fff5df, var(--bg));
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Microsoft YaHei", sans-serif;
@@ -88,7 +89,7 @@
       padding: 4px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #f7e9cf;
+      background: #f6e7ca;
     }
 
     .segmented button,
@@ -110,8 +111,8 @@
 
     .segmented button.active {
       color: var(--accent);
-      background: #fff7e8;
-      box-shadow: inset 0 0 0 1px rgba(180, 75, 43, 0.18), 0 1px 5px rgba(83, 48, 22, 0.1);
+      background: #fff8ec;
+      box-shadow: inset 0 0 0 1px rgba(185, 79, 50, 0.2), 0 1px 5px rgba(83, 48, 22, 0.09);
     }
 
     .segmented button:focus-visible,
@@ -120,7 +121,7 @@
     .icon-button:focus-visible,
     .add-todo:focus-visible,
     .metric-button:focus-visible {
-      outline: 2px solid rgba(180, 75, 43, 0.28);
+      outline: 2px solid rgba(185, 79, 50, 0.28);
       outline-offset: 2px;
     }
 
@@ -159,7 +160,7 @@
     select:focus,
     textarea:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(180, 75, 43, 0.16);
+      box-shadow: 0 0 0 3px rgba(185, 79, 50, 0.15);
     }
 
     .ghost,
@@ -221,7 +222,7 @@
       padding: 14px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff7e8;
+      background: #fff8ec;
       scroll-snap-align: start;
     }
 
@@ -229,23 +230,23 @@
       position: relative;
       overflow: hidden;
       background:
-        linear-gradient(135deg, rgba(255, 242, 200, 0.96), rgba(255, 250, 240, 0.9)),
+        linear-gradient(135deg, rgba(255, 240, 192, 0.94), rgba(255, 250, 241, 0.92)),
         var(--gold-soft);
-      border-color: #d9aa4e;
+      border-color: #d4a246;
     }
 
     .project-card.due-soon {
       background:
-        linear-gradient(135deg, rgba(255, 232, 213, 0.98), rgba(255, 247, 232, 0.92)),
-        #fff0e8;
-      border-color: #cf7042;
+        linear-gradient(135deg, rgba(255, 236, 222, 0.96), rgba(255, 248, 237, 0.92)),
+        #fff3ec;
+      border-color: #c95d3a;
     }
 
     .project-card.due-later {
       background:
-        linear-gradient(135deg, rgba(255, 245, 216, 0.96), rgba(255, 250, 240, 0.9)),
+        linear-gradient(135deg, rgba(255, 242, 204, 0.94), rgba(255, 250, 241, 0.92)),
         var(--gold-soft);
-      border-color: #d9aa4e;
+      border-color: #d4a246;
     }
 
     .project-card.has-ddl::before {
@@ -257,7 +258,7 @@
     }
 
     .project-card.due-later::before {
-      background: linear-gradient(180deg, var(--gold), #d9aa4e);
+      background: linear-gradient(180deg, var(--gold), #d1a34a);
     }
 
     .project-card.add-card {
@@ -349,9 +350,9 @@
     }
 
     .project-card.due-later .days-left {
-      color: #5f401f;
-      background: linear-gradient(135deg, #f3cf83, #e6b85d);
-      box-shadow: 0 8px 18px rgba(159, 103, 24, 0.14);
+      color: #583817;
+      background: linear-gradient(135deg, #f0c66c, #e3b457);
+      box-shadow: 0 8px 18px rgba(148, 97, 15, 0.14);
     }
 
     .project-card.waiting-project {
@@ -366,7 +367,7 @@
     }
 
     .project-card.due-soon .days-left {
-      background: linear-gradient(135deg, #b6402a, #d36a32);
+      background: linear-gradient(135deg, #b94f32, #d56b39);
     }
 
     .countdown-text {
@@ -437,7 +438,7 @@
       padding: 10px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff7e8;
+      background: #fff8ec;
     }
 
     .main-content {
@@ -452,7 +453,7 @@
       padding: 8px;
       overflow: hidden;
       background:
-        linear-gradient(135deg, rgba(255, 247, 232, 0.92), rgba(255, 253, 247, 0.96) 48%, rgba(246, 226, 191, 0.78));
+        linear-gradient(135deg, rgba(255, 247, 232, 0.9), rgba(255, 253, 247, 0.97) 48%, rgba(242, 222, 184, 0.72));
     }
 
     .metric,
@@ -478,7 +479,7 @@
       width: 7px;
       height: 7px;
       border-radius: 999px;
-      background: rgba(180, 75, 43, 0.24);
+      background: rgba(185, 79, 50, 0.22);
     }
 
     .metric span,
@@ -502,11 +503,11 @@
     }
 
     .metric:nth-child(2)::before {
-      background: rgba(180, 75, 43, 0.38);
+      background: rgba(185, 79, 50, 0.34);
     }
 
     .metric:nth-child(3)::before {
-      background: rgba(48, 128, 94, 0.36);
+      background: rgba(63, 133, 103, 0.34);
     }
 
     .metric:nth-child(4)::before {
@@ -522,7 +523,7 @@
     }
 
     .metric-button::before {
-      background: rgba(44, 132, 120, 0.38);
+      background: rgba(40, 127, 116, 0.34);
     }
 
     .metric-button::after {
@@ -532,22 +533,22 @@
       bottom: 17px;
       width: 7px;
       height: 7px;
-      border-top: 2px solid rgba(44, 132, 120, 0.54);
-      border-right: 2px solid rgba(44, 132, 120, 0.54);
+      border-top: 2px solid rgba(40, 127, 116, 0.54);
+      border-right: 2px solid rgba(40, 127, 116, 0.54);
       transform: rotate(45deg);
     }
 
     .metric-button strong {
       padding-right: 22px;
-      color: #2f7e70;
+      color: #287f74;
       font-size: clamp(30px, 3vw, 38px);
       letter-spacing: 0;
     }
 
     .metric-button:hover {
       transform: translateY(-1px);
-      border-color: rgba(44, 132, 120, 0.34);
-      background: rgba(239, 249, 241, 0.9);
+      border-color: rgba(40, 127, 116, 0.34);
+      background: rgba(237, 247, 240, 0.92);
       box-shadow: 0 8px 18px rgba(105, 76, 34, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82);
     }
 
@@ -654,7 +655,7 @@
 
     th {
       color: var(--muted);
-      background: #fafbf9;
+      background: #fffdf8;
       font-size: 13px;
       font-weight: 720;
     }
@@ -667,7 +668,7 @@
     .time-section-row td {
       padding: 7px 14px 5px;
       color: rgba(138, 104, 79, 0.72);
-      background: linear-gradient(90deg, rgba(227, 200, 155, 0.28), transparent 58%);
+      background: linear-gradient(90deg, rgba(223, 193, 139, 0.3), transparent 58%);
       border-bottom: 1px solid rgba(227, 200, 155, 0.42);
       font-size: 13px;
       font-weight: 720;
@@ -755,7 +756,7 @@
       padding: 0 10px;
       border-radius: 999px;
       border: 1px solid currentColor;
-      background: rgba(255, 250, 240, 0.72);
+      background: rgba(255, 250, 241, 0.74);
       font-size: 13px;
       font-weight: 720;
       overflow: hidden;
@@ -801,7 +802,7 @@
       min-height: 34px;
       color: #fffaf0;
       background: var(--accent);
-      box-shadow: 0 6px 12px rgba(180, 75, 43, 0.12);
+      box-shadow: 0 6px 12px rgba(185, 79, 50, 0.13);
     }
 
     .action-secondary,
@@ -809,15 +810,15 @@
       width: 30px;
       min-width: 30px;
       min-height: 30px;
-      color: rgba(180, 75, 43, 0.58);
-      background: rgba(247, 221, 197, 0.42);
+      color: rgba(185, 79, 50, 0.55);
+      background: rgba(246, 221, 199, 0.38);
       box-shadow: none;
       font-size: 14px;
     }
 
     .action-secondary:hover,
     .action-danger:hover {
-      background: rgba(247, 221, 197, 0.75);
+      background: rgba(246, 221, 199, 0.68);
     }
 
     .hover-tooltip {
@@ -888,7 +889,7 @@
       padding: 9px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff7e8;
+      background: #fff8ec;
     }
 
     .day-card.outside-range {
@@ -898,7 +899,7 @@
 
     .day-card.today {
       border-color: var(--accent);
-      box-shadow: inset 0 0 0 1px var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(185, 79, 50, 0.82);
     }
 
     .day-head {
@@ -930,7 +931,7 @@
     }
 
     .calendar-project.unassigned {
-      background: rgba(242, 234, 219, 0.45);
+      background: rgba(238, 229, 212, 0.46);
       border-color: rgba(138, 104, 79, 0.22);
       color: rgba(122, 97, 72, 0.72);
       opacity: 0.72;
@@ -1024,7 +1025,7 @@
       padding: 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fff7e8;
+      background: #fff8ec;
     }
 
     .review-meta {
@@ -1095,8 +1096,8 @@
     .rating-options label:has(input:checked) {
       color: var(--accent);
       border-color: rgba(180, 75, 43, 0.42);
-      background: #fff0e8;
-      box-shadow: inset 0 0 0 1px rgba(180, 75, 43, 0.1);
+      background: #fff3ec;
+      box-shadow: inset 0 0 0 1px rgba(185, 79, 50, 0.1);
     }
 
     .pie-layout {
@@ -2841,7 +2842,7 @@
         return;
       }
 
-      const colors = ["#b6402a", "#d48737", "#9f6718", "#2f7f78", "#4f8a69", "#8a684f"];
+      const colors = ["#b94f32", "#d28a32", "#94610f", "#287f74", "#3f8567", "#80634c"];
       let cursor = 0;
       const slices = groups.map((group, index) => {
         const minutes = sumMinutes(group.tasks);
