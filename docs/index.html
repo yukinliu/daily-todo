@@ -1866,16 +1866,20 @@
 
     function scheduleHoverTooltip(event) {
       const target = event.target.closest("[data-tooltip]");
-      if (!target || !els.taskBody.contains(target)) return;
+      if (!target || !els.taskBody.contains(target) || !isTextOverflowing(target)) return;
       tooltipTarget = target;
       clearTimeout(tooltipTimer);
       tooltipTimer = setTimeout(() => {
-        if (tooltipTarget !== target) return;
+        if (tooltipTarget !== target || !isTextOverflowing(target)) return;
         els.hoverTooltip.textContent = target.dataset.tooltip;
         els.hoverTooltip.hidden = false;
         positionHoverTooltip(event);
         requestAnimationFrame(() => els.hoverTooltip.classList.add("visible"));
       }, 700);
+    }
+
+    function isTextOverflowing(element) {
+      return element.scrollWidth > element.clientWidth + 1;
     }
 
     function moveHoverTooltip(event) {
