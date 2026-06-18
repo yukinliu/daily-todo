@@ -283,7 +283,7 @@
 
     .project-content {
       display: grid;
-      gap: 9px;
+      gap: 12px;
       min-width: 0;
       padding-left: 2px;
     }
@@ -301,7 +301,22 @@
     .project-countdown {
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 10px;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .project-date-placeholder {
+      width: fit-content;
+      color: rgba(122, 97, 72, 0.76);
+      border-bottom: 1px dashed rgba(138, 104, 79, 0.38);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .schedule-editor {
+      display: grid;
+      grid-template-columns: minmax(104px, auto) minmax(138px, 1fr);
+      gap: 8px;
       align-items: center;
     }
 
@@ -309,21 +324,27 @@
       display: inline-flex;
       align-items: baseline;
       justify-content: center;
-      min-width: 72px;
-      min-height: 52px;
-      padding: 4px 10px;
+      min-width: 92px;
+      min-height: 68px;
+      padding: 8px 14px;
       color: #fffaf0;
-      border-radius: 8px;
+      border-radius: 10px;
       background: linear-gradient(135deg, var(--accent), #d48737);
-      box-shadow: 0 8px 18px rgba(180, 75, 43, 0.18);
-      font-size: 28px;
-      font-weight: 820;
+      box-shadow: 0 12px 22px rgba(180, 75, 43, 0.2);
+      font-size: 36px;
+      font-weight: 840;
       line-height: 1;
     }
 
+    .days-left.long-range {
+      align-items: center;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
     .days-left small {
-      margin-left: 2px;
-      font-size: 13px;
+      margin-left: 3px;
+      font-size: 15px;
       font-weight: 720;
     }
 
@@ -342,12 +363,6 @@
 
     .project-card.waiting-project::before {
       background: linear-gradient(180deg, #b97e1f, #e1b960);
-    }
-
-    .project-card.waiting-project .days-left {
-      color: rgba(95, 64, 31, 0.74);
-      background: rgba(243, 207, 131, 0.52);
-      box-shadow: none;
     }
 
     .project-card.due-soon .days-left {
@@ -1482,22 +1497,90 @@
       event.preventDefault();
 
       const field = fieldEl.dataset.projectField;
-      const config = field === "ddl"
-        ? { type: "date", value: project.ddl || "", save: (value) => { project.ddl = value; } }
-        : { type: "text", value: project.name, save: (value) => { project.name = value.trim() || "未命名"; } };
+      if (field === "ddl") {
+        startScheduleEdit(fieldEl, project);
+        return;
+      }
 
-      startInlineEdit(fieldEl, config, () => {
+      startInlineEdit(fieldEl, {
+        type: "text",
+        value: project.name,
+        save: (value) => { project.name = value.trim() || "未命名"; }
+      }, () => {
         saveData();
         render();
         if (els.projectListDialog.open) renderProjectListDialog();
       });
     }
 
+    function startScheduleEdit(fieldEl, project) {
+      if (fieldEl.querySelector("input, select")) return;
+      const wrapper = document.createElement("div");
+      wrapper.className = "schedule-editor";
+      const modeSelect = document.createElement("select");
+      modeSelect.className = "inline-select";
+      modeSelect.innerHTML = `
+        <option value="dated">指定日期</option>
+        <option value="plannedLater">待计划</option>
+      `;
+      modeSelect.value = getProjectScheduleMode(project) === "plannedLater" ? "plannedLater" : "dated";
+
+      const dateInput = document.createElement("input");
+      dateInput.className = "inline-date";
+      dateInput.type = "date";
+      dateInput.value = project.ddl || "";
+      dateInput.hidden = modeSelect.value !== "dated";
+
+      let finished = false;
+      const save = () => {
+        if (finished) return;
+        finished = true;
+        if (modeSelect.value === "plannedLater") {
+          project.scheduleMode = "plannedLater";
+          project.ddl = "";
+        } else if (dateInput.value) {
+          project.scheduleMode = "dated";
+          project.ddl = dateInput.value;
+        } else {
+          project.scheduleMode = "empty";
+          project.ddl = "";
+        }
+        saveData();
+        render();
+        if (els.projectListDialog.open) renderProjectListDialog();
+      };
+
+      modeSelect.addEventListener("change", () => {
+        dateInput.hidden = modeSelect.value !== "dated";
+        if (modeSelect.value === "plannedLater") save();
+        else dateInput.focus();
+      });
+      dateInput.addEventListener("change", save);
+      wrapper.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") save();
+        if (event.key === "Escape") {
+          finished = true;
+          render();
+          if (els.projectListDialog.open) renderProjectListDialog();
+        }
+      });
+      wrapper.addEventListener("focusout", () => setTimeout(() => {
+        if (!wrapper.contains(document.activeElement)) save();
+      }));
+
+      wrapper.append(modeSelect, dateInput);
+      fieldEl.replaceChildren(wrapper);
+      modeSelect.focus();
+    }
+
     function createDefaultProject() {
+      const hasUnnamed = state.projects.some(isUnnamedProject);
+      if (hasUnnamed && !window.confirm("还有未命名项目未处理，仍要继续添加吗？")) return null;
       const project = {
         id: crypto.randomUUID ? crypto.randomUUID() : `project-${Date.now()}`,
         name: "未命名",
         ddl: "",
+        scheduleMode: "empty",
         createdAt: new Date().toISOString()
       };
       state.projects.push(project);
@@ -1525,12 +1608,14 @@
         if (project) {
           project.name = name;
           project.ddl = ddl;
+          project.scheduleMode = ddl ? "dated" : (project.scheduleMode === "plannedLater" ? "plannedLater" : "empty");
         }
       } else {
         state.projects.push({
           id: crypto.randomUUID ? crypto.randomUUID() : `project-${Date.now()}`,
           name,
           ddl,
+          scheduleMode: ddl ? "dated" : "empty",
           createdAt: new Date().toISOString()
         });
       }
@@ -1548,28 +1633,28 @@
     }
 
     function renderProjectListDialog() {
-      const unnamedProjects = state.projects.filter(isUnnamedProject).sort(compareProjects);
+      const draftProjects = state.projects.filter(isDraftProject).sort(compareProjects);
       const groups = getProjectListGroups();
       els.projectListBody.innerHTML = state.projects.length
-        ? unnamedProjects.map(projectListItem).join("") + groups.map(projectListGroup).join("")
+        ? draftProjects.map(projectListItem).join("") + groups.map(projectListGroup).join("")
         : `<div class="empty">还没有项目。</div>`;
     }
 
     function getProjectListGroups() {
       const today = formatDate(new Date());
       const completed = state.projects
-        .filter((project) => !isUnnamedProject(project) && project.ddl && project.ddl < today)
+        .filter((project) => !isDraftProject(project) && hasProjectDdl(project) && project.ddl < today)
         .sort(compareProjects);
       const active = state.projects
-        .filter((project) => !isUnnamedProject(project) && project.ddl && project.ddl >= today)
+        .filter((project) => !isDraftProject(project) && hasProjectDdl(project) && project.ddl >= today)
         .sort(compareProjects);
       const unplanned = state.projects
-        .filter((project) => !isUnnamedProject(project) && !project.ddl)
+        .filter((project) => isPlannedLater(project))
         .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
       return [
         { title: "已完成", hint: "DDL 已经过了", projects: completed },
         { title: "进行中", hint: "有 DDL 的项目", projects: active },
-        { title: "未计划", hint: "未设置 DDL", projects: unplanned }
+        { title: "待计划", hint: "暂不排期", projects: unplanned }
       ];
     }
 
@@ -1583,7 +1668,7 @@
     }
 
     function projectListItem(project) {
-      const ddl = project.ddl ? friendlyDate(project.ddl) : (isUnnamedProject(project) ? "永久" : "未设置 DDL");
+      const ddl = hasProjectDdl(project) ? friendlyDate(project.ddl) : (getProjectScheduleMode(project) === "plannedLater" ? "待计划" : "未设置日期");
       return `
         <div class="project-list-item" data-project-id="${project.id}" title="双击或右键修改项目">
           <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
@@ -1899,33 +1984,37 @@
     }
 
     function renderProjects() {
-      const unnamedProjects = [...state.projects]
-        .filter(isUnnamedProject)
+      const draftProjects = [...state.projects]
+        .filter(isDraftProject)
         .sort(compareProjects);
       const ddlProjects = [...state.projects]
-        .filter((project) => !isUnnamedProject(project) && project.ddl)
+        .filter((project) => !isDraftProject(project) && hasProjectDdl(project))
         .sort(compareProjects);
-      const otherCount = state.projects.filter((project) => !isUnnamedProject(project) && !project.ddl).length;
-      const cardCount = unnamedProjects.length + ddlProjects.length + (otherCount ? 1 : 0);
+      const plannedLaterCount = state.projects.filter((project) => isPlannedLater(project)).length;
+      const cardCount = draftProjects.length + ddlProjects.length + (plannedLaterCount ? 1 : 0);
       els.projectHint.textContent = cardCount > 3 ? "左右滑动查看更多" : "";
-      els.projectRail.innerHTML = unnamedProjects.map(projectCard).join("")
+      els.projectRail.innerHTML = draftProjects.map(projectCard).join("")
         + ddlProjects.map(projectCard).join("")
-        + (otherCount ? otherProjectCard(otherCount) : "")
+        + (plannedLaterCount ? otherProjectCard(plannedLaterCount) : "")
         + addProjectCard();
     }
 
     function projectCard(project) {
-      const waiting = isUnnamedProject(project);
-      const countdown = project.ddl ? getDdlCountdown(project.ddl) : { days: "", variant: "waiting-project" };
-      const dateText = project.ddl ? friendlyDate(project.ddl) : "永久";
+      const mode = getProjectScheduleMode(project);
+      const draft = isDraftProject(project);
+      const countdown = hasProjectDdl(project) ? getDdlCountdown(project.ddl) : { label: "", variant: "waiting-project", longRange: false };
+      const scheduleText = mode === "plannedLater" ? "待计划" : "设置日期 / 待计划";
+      const scheduleMarkup = hasProjectDdl(project)
+        ? `<div class="project-countdown" data-project-field="ddl" title="双击或右键修改 DDL">
+              <div class="days-left ${countdown.longRange ? "long-range" : ""}">${countdown.label}</div>
+              <div class="countdown-text">${countdown.longRange ? "长期项目" : `距离 ${friendlyDate(project.ddl)}`}</div>
+            </div>`
+        : `<div class="project-date-placeholder" data-project-field="ddl" title="双击或右键设置日期或待计划">${scheduleText}</div>`;
       return `
-        <div class="project-card has-ddl ${waiting ? "waiting-project" : countdown.variant}" data-project-id="${project.id}">
+        <div class="project-card has-ddl ${draft ? "waiting-project" : countdown.variant}" data-project-id="${project.id}" data-schedule-mode="${mode}">
           <div class="project-content">
             <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
-            <div class="project-countdown" data-project-field="ddl" title="双击或右键修改 DDL">
-              <div class="days-left">${countdown.days ? `${countdown.days}<small>天</small>` : ""}</div>
-              <div class="countdown-text">距离 ${dateText}</div>
-            </div>
+            ${scheduleMarkup}
           </div>
           <div class="project-card-actions">
             <button class="icon-button" type="button" data-project-action="delete" title="删除项目" aria-label="删除项目">×</button>
@@ -1937,8 +2026,8 @@
     function otherProjectCard(count) {
       return `
         <button class="project-card other-card" type="button" data-open-project-list>
-          <span>未计划</span>
-          <span class="other-count">${count} 个未设置 DDL 的项目</span>
+          <span>待计划</span>
+          <span class="other-count">${count} 个待计划项目</span>
         </button>
       `;
     }
@@ -1955,9 +2044,10 @@
       const today = new Date(`${formatDate(new Date())}T00:00:00`);
       const ddl = new Date(`${dateString}T00:00:00`);
       const diff = Math.ceil((ddl - today) / 86400000);
-      if (diff > 30) return { days: diff, variant: "due-later" };
-      if (diff >= 0) return { days: diff, variant: "due-soon" };
-      return { days: Math.abs(diff), variant: "due-soon" };
+      if (diff > 365) return { label: "一年后", variant: "due-later", longRange: true };
+      if (diff > 30) return { label: `${diff}<small>天</small>`, variant: "due-later", longRange: false };
+      if (diff >= 0) return { label: `${diff}<small>天</small>`, variant: "due-soon", longRange: false };
+      return { label: `${Math.abs(diff)}<small>天</small>`, variant: "due-soon", longRange: false };
     }
 
     function renderDaily() {
@@ -2214,11 +2304,11 @@
     }
 
     function compareProjects(a, b) {
-      const aUnnamed = isUnnamedProject(a);
-      const bUnnamed = isUnnamedProject(b);
-      if (aUnnamed !== bUnnamed) return aUnnamed ? -1 : 1;
-      const aHasDdl = Boolean(a.ddl);
-      const bHasDdl = Boolean(b.ddl);
+      const aDraft = isDraftProject(a);
+      const bDraft = isDraftProject(b);
+      if (aDraft !== bDraft) return aDraft ? -1 : 1;
+      const aHasDdl = hasProjectDdl(a);
+      const bHasDdl = hasProjectDdl(b);
       if (aHasDdl !== bHasDdl) return aHasDdl ? -1 : 1;
       if (aHasDdl && a.ddl !== b.ddl) return a.ddl.localeCompare(b.ddl);
       return a.name.localeCompare(b.name, "zh-CN");
@@ -2227,6 +2317,24 @@
     function isUnnamedProject(project) {
       const name = (project.name || "").trim();
       return name === "未命名" || name === "未命名项目";
+    }
+
+    function getProjectScheduleMode(project) {
+      if (project.scheduleMode) return project.scheduleMode;
+      if (project.ddl) return "dated";
+      return isUnnamedProject(project) ? "empty" : "plannedLater";
+    }
+
+    function isDraftProject(project) {
+      return getProjectScheduleMode(project) === "empty" || isUnnamedProject(project);
+    }
+
+    function hasProjectDdl(project) {
+      return getProjectScheduleMode(project) === "dated" && Boolean(project.ddl);
+    }
+
+    function isPlannedLater(project) {
+      return getProjectScheduleMode(project) === "plannedLater" && !isDraftProject(project);
     }
 
     function findProject(id) {
@@ -2323,11 +2431,15 @@
           id: crypto.randomUUID ? crypto.randomUUID() : `project-${Date.now()}-${projects.length}`,
           name: safeName,
           ddl: projectDdl || "",
+          scheduleMode: projectDdl ? "dated" : "plannedLater",
           createdAt: new Date().toISOString()
         };
         projects.push(project);
       }
-      if (projectDdl && !project.ddl) project.ddl = projectDdl;
+      if (projectDdl && !project.ddl) {
+        project.ddl = projectDdl;
+        project.scheduleMode = "dated";
+      }
       return project.id;
     }
 
@@ -2354,10 +2466,13 @@
     function normalizeProject(project) {
       if (!project || !project.name) return null;
       const name = project.name === "未命名项目" ? "未命名" : project.name;
+      const ddl = project.ddl || "";
+      const scheduleMode = project.scheduleMode || (ddl ? "dated" : (name === "未命名" ? "empty" : "plannedLater"));
       return {
         id: project.id || (crypto.randomUUID ? crypto.randomUUID() : `project-${Date.now()}`),
         name,
-        ddl: project.ddl || "",
+        ddl,
+        scheduleMode,
         createdAt: project.createdAt || new Date().toISOString()
       };
     }
