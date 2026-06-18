@@ -500,6 +500,7 @@
     .todo-tools {
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
       padding: 10px 14px 0;
       background: #fffdf7;
     }
@@ -549,13 +550,19 @@
     td:nth-child(1) { width: 50px; }
 
     th:nth-child(2),
-    td:nth-child(2) { width: 220px; }
+    td:nth-child(2) { width: 118px; }
 
     th:nth-child(3),
-    td:nth-child(3) { width: 150px; }
+    td:nth-child(3) { width: 220px; }
 
     th:nth-child(4),
-    td:nth-child(4) { width: 118px; }
+    td:nth-child(4) { width: 150px; }
+
+    table.project-table-view th:nth-child(2),
+    table.project-table-view td:nth-child(2) { width: 150px; }
+
+    table.project-table-view th:nth-child(4),
+    table.project-table-view td:nth-child(4) { width: 118px; }
 
     th:nth-child(5),
     td:nth-child(5) { width: 128px; }
@@ -1191,21 +1198,11 @@
 
       <section class="todo-panel" aria-label="Todo 清单">
         <div class="todo-tools">
-          <button class="ghost" type="button" id="resetSortBtn">恢复默认排序</button>
+          <button class="ghost" type="button" id="toggleTodoViewBtn">项目视图</button>
+          <button class="ghost" type="button" id="resetSortBtn">默认排序</button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>排序</th>
-              <th>Todo</th>
-              <th>项目</th>
-              <th>计划开始</th>
-              <th>日期</th>
-              <th>状态</th>
-              <th>完成记录</th>
-              <th>操作</th>
-            </tr>
-          </thead>
+        <table id="taskTable">
+          <thead id="taskHead"></thead>
           <tbody id="taskBody"></tbody>
         </table>
         <div id="emptyState" class="empty" hidden>这一天还没有 todo。</div>
@@ -1342,11 +1339,13 @@
     state.rangeStart = state.selectedDate;
     state.rangeEnd = "";
     state.viewMode = "date";
+    state.todoListView = localStorage.getItem("daily-todo-list-view") || "time";
     state.editingProjectId = null;
     state.editingTaskId = null;
     state.reviewQueue = [];
     state.reviewIndex = 0;
     state.draggingTaskId = null;
+    state.draggingProjectKey = null;
     state.completingTaskId = null;
 
     const els = {
@@ -1370,6 +1369,9 @@
       focusTimeBtn: document.querySelector("#focusTimeBtn"),
       focusTime: document.querySelector("#focusTime"),
       resetSortBtn: document.querySelector("#resetSortBtn"),
+      toggleTodoViewBtn: document.querySelector("#toggleTodoViewBtn"),
+      taskTable: document.querySelector("#taskTable"),
+      taskHead: document.querySelector("#taskHead"),
       taskBody: document.querySelector("#taskBody"),
       emptyState: document.querySelector("#emptyState"),
       hiddenNote: document.querySelector("#hiddenNote"),
@@ -1438,6 +1440,7 @@
         renderProjectListDialog();
       });
 
+      els.toggleTodoViewBtn.addEventListener("click", toggleTodoListView);
       els.taskBody.addEventListener("click", handleTaskClick);
       els.taskBody.addEventListener("mouseover", scheduleHoverTooltip);
       els.taskBody.addEventListener("mousemove", moveHoverTooltip);
@@ -1975,10 +1978,17 @@
     }
 
     function resetDefaultSort() {
-      getVisibleTasks().forEach((task, index) => {
-        task.manualOrder = false;
-        task.order = index + 1;
-      });
+      if (state.todoListView === "project") {
+        state.tasks.forEach((task) => {
+          task.projectManualOrder = false;
+          task.projectOrder = 9999;
+        });
+      } else {
+        getVisibleTasks().forEach((task, index) => {
+          task.manualOrder = false;
+          task.order = index + 1;
+        });
+      }
       saveData();
       render();
     }
@@ -1987,7 +1997,12 @@
       const row = event.target.closest("tr[data-task-id]");
       if (!row) return;
       state.draggingTaskId = row.dataset.taskId;
-      row.classList.add("dragging");
+      state.draggingProjectKey = row.dataset.projectKey || "";
+      if (state.todoListView === "project") {
+        document.querySelectorAll(`[data-project-key="${state.draggingProjectKey}"]`).forEach((item) => item.classList.add("dragging"));
+      } else {
+        row.classList.add("dragging");
+      }
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", row.dataset.taskId);
     }
@@ -2002,13 +2017,15 @@
       const row = event.target.closest("tr[data-task-id]");
       if (!row || !state.draggingTaskId || row.dataset.taskId === state.draggingTaskId) return;
       event.preventDefault();
-      reorderVisibleTasks(state.draggingTaskId, row.dataset.taskId);
+      if (state.todoListView === "project") reorderProjectGroups(state.draggingProjectKey, row.dataset.projectKey);
+      else reorderVisibleTasks(state.draggingTaskId, row.dataset.taskId);
       saveData();
       render();
     }
 
     function handleDragEnd() {
       state.draggingTaskId = null;
+      state.draggingProjectKey = null;
       document.querySelectorAll(".dragging").forEach((item) => item.classList.remove("dragging"));
     }
 
@@ -2026,15 +2043,41 @@
       });
     }
 
+    function reorderProjectGroups(sourceKey, targetKey) {
+      if (!sourceKey || !targetKey || sourceKey === targetKey) return;
+      const visible = getVisibleTasks();
+      const keys = [...new Set(visible.map(getTaskProjectKey))];
+      const sourceIndex = keys.indexOf(sourceKey);
+      const targetIndex = keys.indexOf(targetKey);
+      if (sourceIndex < 0 || targetIndex < 0) return;
+      const [source] = keys.splice(sourceIndex, 1);
+      keys.splice(targetIndex, 0, source);
+      keys.forEach((key, index) => {
+        state.tasks.forEach((task) => {
+          if (getTaskProjectKey(task) === key) {
+            task.projectOrder = index + 1;
+            task.projectManualOrder = true;
+          }
+        });
+      });
+    }
+
     function getVisibleTasks() {
       const today = formatDate(new Date());
-      return state.tasks.filter((task) => {
+      const visible = state.tasks.filter((task) => {
         if (state.viewMode === "all") return true;
         if (state.viewMode === "calendar") return task.targetDate >= state.rangeStart && task.targetDate <= state.rangeEnd;
         if (task.targetDate !== state.selectedDate) return false;
         if (!task.done && task.targetDate < today) return false;
         return true;
-      }).sort(compareTasks);
+      });
+      return sortVisibleTasks(visible);
+    }
+
+    function sortVisibleTasks(tasks) {
+      return [...tasks].sort((a, b) => state.todoListView === "project"
+        ? compareProjectViewTasks(a, b, tasks)
+        : compareTasks(a, b));
     }
 
     function getHiddenOverdueCount() {
@@ -2146,6 +2189,7 @@
       els.doneCount.textContent = done;
       els.doneRate.textContent = total ? `${Math.round((done / total) * 100)}%` : "0%";
       els.focusTime.textContent = formatDuration(sumMinutes(visibleTasks));
+      renderTaskHeader();
 
       els.taskBody.innerHTML = addTaskRow() + renderTaskRows(visibleTasks);
       els.emptyState.hidden = visibleTasks.length > 0;
@@ -2160,7 +2204,25 @@
       }
     }
 
+    function renderTaskHeader() {
+      const projectView = state.todoListView === "project";
+      els.taskTable.classList.toggle("project-table-view", projectView);
+      els.toggleTodoViewBtn.textContent = projectView ? "时间视图" : "项目视图";
+      els.taskHead.innerHTML = projectView
+        ? `<tr><th>排序</th><th>项目</th><th>Todo</th><th>计划开始</th><th>日期</th><th>状态</th><th>完成记录</th><th>操作</th></tr>`
+        : `<tr><th>排序</th><th>计划开始</th><th>Todo</th><th>项目</th><th>日期</th><th>状态</th><th>完成记录</th><th>操作</th></tr>`;
+    }
+
+    function toggleTodoListView() {
+      state.todoListView = state.todoListView === "project" ? "time" : "project";
+      localStorage.setItem("daily-todo-list-view", state.todoListView);
+      render();
+    }
+
     function renderTaskRows(tasks) {
+      if (state.todoListView === "project") {
+        return tasks.map((task) => taskRow(task)).join("");
+      }
       let currentSection = "";
       return tasks.map((task) => {
         const section = getTimeSection(task.plannedStart);
@@ -2204,18 +2266,12 @@
         ? `${friendlyDate(task.completedDate)}${task.durationMinutes ? ` · ${formatDuration(task.durationMinutes)}` : ""}${rating ? ` · ${rating.emoji}` : ""}`
         : "未完成";
 
-      return `
-        <tr class="task-row ${rowClass}" draggable="true" data-task-id="${task.id}">
-          <td><span class="drag-handle">↕</span></td>
-          <td>
-            <div class="task-title" data-task-field="text" data-tooltip="${escapeHtml(text)}" aria-label="${escapeHtml(text)}">${escapeHtml(text)}</div>
-            ${note}
-          </td>
-          <td>
-            <div class="chip" data-task-field="projectId" title="双击或右键修改项目">${escapeHtml(project.name)}</div>
-          </td>
-          <td><span class="planned-time ${task.plannedStart ? "" : "empty-time"}" data-task-field="plannedStart" title="${task.done ? "" : "双击或右键修改计划开始时间"}">${formatPlannedTime(task.plannedStart)}</span></td>
-          <td><span data-task-field="targetDate" title="${task.done ? "" : "双击或右键修改日期"}">${friendlyDate(task.targetDate)}</span></td>
+      const projectCell = `<div class="chip" data-task-field="projectId" title="双击或右键修改项目">${escapeHtml(project.name)}</div>`;
+      const titleCell = `<div class="task-title" data-task-field="text" data-tooltip="${escapeHtml(text)}" aria-label="${escapeHtml(text)}">${escapeHtml(text)}</div>${note}`;
+      const timeCell = `<span class="planned-time ${task.plannedStart ? "" : "empty-time"}" data-task-field="plannedStart" title="${task.done ? "" : "双击或右键修改计划开始时间"}">${formatPlannedTime(task.plannedStart)}</span>`;
+      const dateCell = `<span data-task-field="targetDate" title="${task.done ? "" : "双击或右键修改日期"}">${friendlyDate(task.targetDate)}</span>`;
+      const commonCells = `
+          <td>${dateCell}</td>
           <td><span class="status">${status}</span></td>
           <td><span class="completion-record">${completedDate}</span></td>
           <td>
@@ -2223,7 +2279,14 @@
               <button class="icon-button ${task.done ? "action-secondary" : "action-complete"}" type="button" data-action="toggle" data-id="${task.id}" title="${actionTitle}" aria-label="${actionTitle}">${actionLabel}</button>
               <button class="icon-button action-danger" type="button" data-action="delete" data-id="${task.id}" title="删除 Todo" aria-label="删除 Todo">×</button>
             </div>
-          </td>
+          </td>`;
+      const orderedCells = state.todoListView === "project"
+        ? `<td>${projectCell}</td><td>${titleCell}</td><td>${timeCell}</td>${commonCells}`
+        : `<td>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td>${commonCells}`;
+      return `
+        <tr class="task-row ${rowClass}" draggable="true" data-task-id="${task.id}" data-project-key="${getTaskProjectKey(task)}">
+          <td><span class="drag-handle">↕</span></td>
+          ${orderedCells}
         </tr>
       `;
     }
@@ -2372,6 +2435,49 @@
       return [`<option value="" ${selectedValue ? "" : "selected"}>${UNASSIGNED_PROJECT}</option>`]
         .concat(projects.map((project) => `<option value="${project.id}" ${project.id === selectedValue ? "selected" : ""}>${escapeHtml(project.name)}</option>`))
         .join("");
+    }
+
+    function compareProjectViewTasks(a, b, tasks) {
+      const aKey = getTaskProjectKey(a);
+      const bKey = getTaskProjectKey(b);
+      if (aKey !== bKey) {
+        if (aKey === "__unassigned__") return 1;
+        if (bKey === "__unassigned__") return -1;
+        const aManual = getProjectManualOrder(aKey, tasks);
+        const bManual = getProjectManualOrder(bKey, tasks);
+        if (aManual !== null || bManual !== null) {
+          if (aManual === null) return 1;
+          if (bManual === null) return -1;
+          return aManual - bManual;
+        }
+        const countDiff = getProjectTaskCount(bKey, tasks) - getProjectTaskCount(aKey, tasks);
+        if (countDiff) return countDiff;
+        return compareProjects(getProjectForTask(a), getProjectForTask(b));
+      }
+      return compareTaskWithinProject(a, b);
+    }
+
+    function compareTaskWithinProject(a, b) {
+      const aTime = a.plannedStart || "99:99";
+      const bTime = b.plannedStart || "99:99";
+      if (aTime !== bTime) return aTime.localeCompare(bTime);
+      if (a.targetDate !== b.targetDate) return a.targetDate.localeCompare(b.targetDate);
+      return (a.order || 0) - (b.order || 0) || new Date(b.createdAt) - new Date(a.createdAt);
+    }
+
+    function getProjectTaskCount(projectKey, tasks) {
+      return tasks.filter((task) => getTaskProjectKey(task) === projectKey).length;
+    }
+
+    function getProjectManualOrder(projectKey, tasks) {
+      const orders = tasks
+        .filter((task) => getTaskProjectKey(task) === projectKey && task.projectManualOrder)
+        .map((task) => task.projectOrder || 9999);
+      return orders.length ? Math.min(...orders) : null;
+    }
+
+    function getTaskProjectKey(task) {
+      return task.projectId || "__unassigned__";
     }
 
     function compareTasks(a, b) {
@@ -2544,7 +2650,9 @@
         durationMinutes: Math.max(0, Number.parseInt(task.durationMinutes || "0", 10) || 0),
         completionRating: task.completionRating || "",
         manualOrder: Boolean(task.manualOrder),
-        order: task.order || 9999
+        order: task.order || 9999,
+        projectManualOrder: Boolean(task.projectManualOrder),
+        projectOrder: task.projectOrder || 9999
       };
     }
 
