@@ -222,6 +222,12 @@
       width: 34px;
       background: linear-gradient(90deg, rgba(255, 250, 241, 0), rgba(91, 58, 24, 0.12));
       border-radius: 0 10px 10px 0;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+    }
+
+    .project-rail-layout.has-overflow::after {
+      opacity: 1;
     }
 
     .project-rail {
@@ -565,7 +571,7 @@
     }
 
     .project-list-item:has(.schedule-editor) {
-      grid-template-columns: minmax(150px, 1fr) minmax(280px, 1.2fr) 34px;
+      grid-template-columns: minmax(150px, 1fr) minmax(300px, 1.3fr) 34px;
     }
 
     .project-list-item .project-ddl {
@@ -578,6 +584,11 @@
     .project-list-item .project-ddl:has(.schedule-editor) {
       overflow: visible;
       white-space: normal;
+    }
+
+    .project-list-item .schedule-editor {
+      grid-template-columns: 1fr;
+      width: 100%;
     }
 
     .main-content {
@@ -746,9 +757,17 @@
       grid-template-columns: minmax(70px, auto) minmax(50px, auto) minmax(50px, auto);
     }
 
+    .inline-date-editor[hidden] {
+      display: none;
+    }
+
     .project-date-editor {
       grid-column: 1 / -1;
       width: 100%;
+    }
+
+    .project-card .project-date-editor {
+      grid-template-columns: minmax(72px, 1fr) minmax(52px, 0.72fr) minmax(52px, 0.72fr);
     }
 
     .inline-time-editor select,
@@ -1609,7 +1628,7 @@
     state.rangeEnd = "";
     state.viewMode = "date";
     state.todoListView = localStorage.getItem("daily-todo-list-view") || "time";
-    state.projectListCollapsed = JSON.parse(localStorage.getItem("daily-project-list-collapsed") || "{}");
+    state.projectListCollapsed = parseStoredJson("daily-project-list-collapsed", {});
     state.editingProjectId = null;
     state.editingTaskId = null;
     state.reviewQueue = [];
@@ -1829,10 +1848,11 @@
       const modeSelect = document.createElement("select");
       modeSelect.className = "inline-select";
       modeSelect.innerHTML = `
-        <option value="dated">指定日期</option>
+        <option value="empty">未安排</option>
         <option value="plannedLater">待计划</option>
+        <option value="dated">指定日期</option>
       `;
-      modeSelect.value = getProjectScheduleMode(project) === "plannedLater" ? "plannedLater" : "dated";
+      modeSelect.value = getProjectScheduleMode(project);
 
       const dateEditor = createDatePartsEditor(project.ddl || "", {
         className: "inline-date-editor project-date-editor",
@@ -1847,6 +1867,9 @@
         finished = true;
         if (modeSelect.value === "plannedLater") {
           project.scheduleMode = "plannedLater";
+          project.ddl = "";
+        } else if (modeSelect.value === "empty") {
+          project.scheduleMode = "empty";
           project.ddl = "";
         } else {
           const value = dateEditor.getValue();
@@ -1865,8 +1888,8 @@
 
       modeSelect.addEventListener("change", () => {
         dateEditor.el.hidden = modeSelect.value !== "dated";
-        if (modeSelect.value === "plannedLater") save();
-        else dateEditor.focus();
+        if (modeSelect.value === "dated") dateEditor.focus();
+        else save();
       });
       wrapper.addEventListener("keydown", (event) => {
         if (event.key === "Enter") save();
@@ -1947,8 +1970,11 @@
     function renderProjectListDialog() {
       const draftProjects = state.projects.filter(isDraftProject).sort(compareProjects);
       const groups = getProjectListGroups();
+      const draftMarkup = draftProjects.length > 3
+        ? projectListGroup({ key: "draft", title: "未命名", hint: "待处理项目", projects: draftProjects })
+        : draftProjects.map(projectListItem).join("");
       els.projectListBody.innerHTML = state.projects.length
-        ? draftProjects.map(projectListItem).join("") + groups.map(projectListGroup).join("")
+        ? draftMarkup + groups.map(projectListGroup).join("")
         : `<div class="empty">还没有项目。</div>`;
     }
 
@@ -1984,7 +2010,7 @@
     }
 
     function projectListItem(project) {
-      const ddl = hasProjectDdl(project) ? friendlyDate(project.ddl) : (getProjectScheduleMode(project) === "plannedLater" ? "待计划" : "未设置日期");
+      const ddl = hasProjectDdl(project) ? friendlyDate(project.ddl) : (getProjectScheduleMode(project) === "plannedLater" ? "待计划" : "未安排");
       return `
         <div class="project-list-item" data-project-id="${project.id}" title="双击或右键修改项目">
           <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
@@ -2568,6 +2594,7 @@
       const plannedLaterCount = state.projects.filter((project) => isPlannedLater(project)).length;
       const cardCount = draftProjects.length + ddlProjects.length + (plannedLaterCount ? 1 : 0);
       els.projectHint.textContent = cardCount > 4 ? "左右滑动查看更多" : "";
+      els.projectRail.closest(".project-rail-layout").classList.toggle("has-overflow", cardCount > 4);
       els.projectRail.innerHTML = draftProjects.map(projectCard).join("")
         + ddlProjects.map(projectCard).join("")
         + (plannedLaterCount ? otherProjectCard(plannedLaterCount) : "");
@@ -2577,7 +2604,7 @@
       const mode = getProjectScheduleMode(project);
       const draft = isDraftProject(project);
       const countdown = hasProjectDdl(project) ? getDdlCountdown(project.ddl) : { label: "", variant: "waiting-project", longRange: false };
-      const scheduleText = mode === "plannedLater" ? "待计划" : "设置日期 / 待计划";
+      const scheduleText = mode === "plannedLater" ? "待计划" : "未安排";
       const scheduleMarkup = hasProjectDdl(project)
         ? `<div class="project-countdown" data-project-field="ddl" title="双击或右键修改 DDL">
               <div class="days-left ${countdown.longRange ? "long-range" : ""}">${countdown.label}</div>
@@ -3027,6 +3054,15 @@
         cursor.setDate(cursor.getDate() + 1);
       }
       return dates;
+    }
+
+    function parseStoredJson(key, fallback) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return value && typeof value === "object" ? value : fallback;
+      } catch {
+        return fallback;
+      }
     }
 
     function loadData() {
