@@ -448,49 +448,105 @@
     .status-panel {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 1px;
+      gap: 8px;
+      padding: 8px;
       overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(255, 247, 232, 0.92), rgba(255, 253, 247, 0.96) 48%, rgba(246, 226, 191, 0.78));
     }
 
-    .metric {
-      min-height: 78px;
-      padding: 13px 14px;
-      background: #fffdf7;
+    .metric,
+    .metric-button {
+      position: relative;
+      display: grid;
+      align-content: space-between;
+      min-width: 0;
+      min-height: 86px;
+      padding: 13px 15px 14px;
+      border: 1px solid rgba(227, 200, 155, 0.56);
+      border-radius: 8px;
+      background: rgba(255, 253, 247, 0.86);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
     }
 
-    .metric span {
+    .metric::before,
+    .metric-button::before {
+      content: "";
+      position: absolute;
+      top: 13px;
+      right: 13px;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(180, 75, 43, 0.24);
+    }
+
+    .metric span,
+    .metric-button span {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 760;
     }
 
-    .metric strong {
-      font-size: 30px;
-      line-height: 1;
+    .metric strong,
+    .metric-button strong {
+      display: block;
+      overflow: hidden;
+      color: var(--text);
+      font-size: clamp(26px, 2.4vw, 34px);
+      line-height: 1.03;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric:nth-child(2)::before {
+      background: rgba(180, 75, 43, 0.38);
+    }
+
+    .metric:nth-child(3)::before {
+      background: rgba(48, 128, 94, 0.36);
+    }
+
+    .metric:nth-child(4)::before {
+      background: rgba(209, 144, 47, 0.38);
     }
 
     .metric-button {
       width: 100%;
-      min-height: 78px;
-      padding: 13px 14px;
       color: inherit;
       text-align: left;
-      border: 0;
-      background: #fffdf7;
+      cursor: pointer;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
     }
 
-    .metric-button span {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 720;
+    .metric-button::before {
+      background: rgba(44, 132, 120, 0.38);
+    }
+
+    .metric-button::after {
+      content: "";
+      position: absolute;
+      right: 15px;
+      bottom: 17px;
+      width: 7px;
+      height: 7px;
+      border-top: 2px solid rgba(44, 132, 120, 0.54);
+      border-right: 2px solid rgba(44, 132, 120, 0.54);
+      transform: rotate(45deg);
     }
 
     .metric-button strong {
-      font-size: 30px;
-      line-height: 1;
+      padding-right: 16px;
+      color: #2f7e70;
+    }
+
+    .metric-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(44, 132, 120, 0.34);
+      background: rgba(239, 249, 241, 0.9);
+      box-shadow: 0 8px 18px rgba(105, 76, 34, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82);
     }
 
     .todo-panel {
