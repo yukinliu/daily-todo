@@ -366,7 +366,7 @@
 
     .status-panel {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 1px;
       overflow: hidden;
     }
@@ -385,6 +385,29 @@
     }
 
     .metric strong {
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .metric-button {
+      width: 100%;
+      min-height: 78px;
+      padding: 13px 14px;
+      color: inherit;
+      text-align: left;
+      border: 0;
+      background: #fffdf7;
+    }
+
+    .metric-button span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .metric-button strong {
       font-size: 30px;
       line-height: 1;
     }
@@ -577,6 +600,12 @@
       border: 1px solid var(--line);
     }
 
+    .calendar-project.unassigned {
+      background: #f2eadb;
+      border-style: dashed;
+      color: #7a6148;
+    }
+
     .calendar-project strong {
       overflow: hidden;
       text-overflow: ellipsis;
@@ -660,6 +689,60 @@
       font-size: 13px;
     }
 
+    .time-input-row {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) 130px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .pie-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .pie-chart {
+      width: 220px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: var(--pie, #f2eadb);
+      box-shadow: inset 0 0 0 14px rgba(255, 250, 240, 0.8), 0 10px 24px rgba(83, 48, 22, 0.12);
+    }
+
+    .pie-legend {
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 720px) {
+      .pie-layout,
+      .time-input-row {
+        grid-template-columns: 1fr;
+      }
+
+      .pie-chart {
+        width: min(220px, 72vw);
+        justify-self: center;
+      }
+    }
+
     .is-hidden {
       display: none;
     }
@@ -741,6 +824,10 @@
           <span>完成率</span>
           <strong id="doneRate">0%</strong>
         </div>
+        <button class="metric-button" type="button" id="focusTimeBtn">
+          <span>专注时间</span>
+          <strong id="focusTime">0分钟</strong>
+        </button>
       </section>
 
       <section class="todo-panel" aria-label="Todo 清单">
@@ -819,6 +906,40 @@
     </div>
   </dialog>
 
+  <dialog id="completeDialog">
+    <form class="dialog-body" id="completeForm" method="dialog">
+      <h2>记录完成时间</h2>
+      <p>可以填写这条 todo 使用的专注时间，单位为分钟；不填也可以直接完成。</p>
+      <div class="time-input-row">
+        <div class="field">
+          <label for="completeTaskName">Todo</label>
+          <input id="completeTaskName" type="text" readonly>
+        </div>
+        <div class="field">
+          <label for="completeMinutes">分钟</label>
+          <input id="completeMinutes" type="number" min="0" step="1" placeholder="可选">
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="completeCancelBtn">取消</button>
+        <button class="primary" type="submit">完成</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="timePieDialog">
+    <div class="dialog-body">
+      <h2 id="timePieTitle">时间分布</h2>
+      <div class="pie-layout">
+        <div class="pie-chart" id="pieChart"></div>
+        <div class="pie-legend" id="pieLegend"></div>
+      </div>
+      <div class="dialog-actions">
+        <button class="primary" type="button" id="timePieCloseBtn">关闭</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="reviewDialog">
     <div class="dialog-body">
       <h2>确认历史任务状态</h2>
@@ -845,6 +966,7 @@
     state.reviewQueue = [];
     state.reviewIndex = 0;
     state.draggingTaskId = null;
+    state.completingTaskId = null;
 
     const els = {
       todayBtn: document.querySelector("#todayBtn"),
@@ -864,6 +986,8 @@
       pendingCount: document.querySelector("#pendingCount"),
       doneCount: document.querySelector("#doneCount"),
       doneRate: document.querySelector("#doneRate"),
+      focusTimeBtn: document.querySelector("#focusTimeBtn"),
+      focusTime: document.querySelector("#focusTime"),
       taskBody: document.querySelector("#taskBody"),
       emptyState: document.querySelector("#emptyState"),
       hiddenNote: document.querySelector("#hiddenNote"),
@@ -884,6 +1008,16 @@
       taskProject: document.querySelector("#taskProject"),
       taskNote: document.querySelector("#taskNote"),
       taskCancelBtn: document.querySelector("#taskCancelBtn"),
+      completeDialog: document.querySelector("#completeDialog"),
+      completeForm: document.querySelector("#completeForm"),
+      completeTaskName: document.querySelector("#completeTaskName"),
+      completeMinutes: document.querySelector("#completeMinutes"),
+      completeCancelBtn: document.querySelector("#completeCancelBtn"),
+      timePieDialog: document.querySelector("#timePieDialog"),
+      timePieTitle: document.querySelector("#timePieTitle"),
+      pieChart: document.querySelector("#pieChart"),
+      pieLegend: document.querySelector("#pieLegend"),
+      timePieCloseBtn: document.querySelector("#timePieCloseBtn"),
       reviewDialog: document.querySelector("#reviewDialog"),
       reviewIntro: document.querySelector("#reviewIntro"),
       reviewBody: document.querySelector("#reviewBody"),
@@ -921,6 +1055,13 @@
       els.taskBody.addEventListener("dragend", handleDragEnd);
       els.taskForm.addEventListener("submit", saveTask);
       els.taskCancelBtn.addEventListener("click", () => els.taskDialog.close());
+      els.completeForm.addEventListener("submit", saveCompletionTime);
+      els.completeCancelBtn.addEventListener("click", () => {
+        state.completingTaskId = null;
+        els.completeDialog.close();
+      });
+      els.focusTimeBtn.addEventListener("click", openTimePie);
+      els.timePieCloseBtn.addEventListener("click", () => els.timePieDialog.close());
 
       els.reviewKeepBtn.addEventListener("click", () => answerReview(false));
       els.reviewDoneBtn.addEventListener("click", () => answerReview(true));
@@ -1090,9 +1231,15 @@
       if (!task) return;
 
       if (button.dataset.action === "toggle") {
-        task.done = !task.done;
-        task.completedAt = task.done ? new Date().toISOString() : null;
-        task.completedDate = task.done ? formatDate(new Date()) : "";
+        if (task.done) {
+          task.done = false;
+          task.completedAt = null;
+          task.completedDate = "";
+          task.durationMinutes = 0;
+        } else {
+          openCompletionDialog(task);
+          return;
+        }
       }
 
       if (button.dataset.action === "edit") {
@@ -1119,6 +1266,7 @@
         createdAt: new Date().toISOString(),
         completedAt: null,
         completedDate: "",
+        durationMinutes: 0,
         order: nextOrder()
       };
       state.tasks.unshift(task);
@@ -1151,6 +1299,29 @@
       render();
     }
 
+    function openCompletionDialog(task) {
+      state.completingTaskId = task.id;
+      els.completeTaskName.value = task.text || "空白 Todo";
+      els.completeMinutes.value = task.durationMinutes || "";
+      els.completeDialog.showModal();
+      els.completeMinutes.focus();
+    }
+
+    function saveCompletionTime(event) {
+      event.preventDefault();
+      const task = state.tasks.find((item) => item.id === state.completingTaskId);
+      if (task) {
+        task.done = true;
+        task.completedAt = new Date().toISOString();
+        task.completedDate = formatDate(new Date());
+        task.durationMinutes = Math.max(0, Number.parseInt(els.completeMinutes.value || "0", 10) || 0);
+      }
+      state.completingTaskId = null;
+      els.completeDialog.close();
+      saveData();
+      render();
+    }
+
     function handleDragStart(event) {
       const row = event.target.closest("tr[data-task-id]");
       if (!row) return;
@@ -1177,6 +1348,7 @@
 
     function handleDragEnd() {
       state.draggingTaskId = null;
+    state.completingTaskId = null;
       document.querySelectorAll(".dragging").forEach((item) => item.classList.remove("dragging"));
     }
 
@@ -1294,6 +1466,7 @@
       els.pendingCount.textContent = pending;
       els.doneCount.textContent = done;
       els.doneRate.textContent = total ? `${Math.round((done / total) * 100)}%` : "0%";
+      els.focusTime.textContent = formatDuration(sumMinutes(visibleTasks));
 
       els.taskBody.innerHTML = addTaskRow() + visibleTasks.map(taskRow).join("");
       els.emptyState.hidden = visibleTasks.length > 0;
@@ -1327,7 +1500,9 @@
       const text = task.text || "空白 Todo";
       const note = task.note ? `<div class="task-note">${escapeHtml(task.note)}</div>` : "";
       const ddl = project.ddl ? `<div class="ddl-small">DDL ${friendlyDate(project.ddl)}</div>` : "";
-      const completedDate = task.completedDate ? friendlyDate(task.completedDate) : "未完成";
+      const completedDate = task.completedDate
+        ? `${friendlyDate(task.completedDate)}${task.durationMinutes ? ` · ${formatDuration(task.durationMinutes)}` : ""}`
+        : "未完成";
 
       return `
         <tr class="task-row ${rowClass}" draggable="true" data-task-id="${task.id}">
@@ -1383,10 +1558,13 @@
 
     function calendarProject(group) {
       const done = group.tasks.filter((task) => task.done).length;
+      const minutes = sumMinutes(group.tasks);
+      const className = group.project.id ? "calendar-project" : "calendar-project unassigned";
       return `
-        <div class="calendar-project">
+        <div class="${className}">
           <strong title="${escapeHtml(group.project.name)}">${escapeHtml(group.project.name)}</strong>
           <span>${group.tasks.length} 条 todo，完成 ${done} 条</span>
+          <span>累计时间：${formatDuration(minutes)}</span>
         </div>
       `;
     }
@@ -1404,7 +1582,11 @@
         map.get(project.id).tasks.push(task);
       });
 
-      return [...map.values()].sort((a, b) => compareProjects(a.project, b.project));
+      return [...map.values()].sort((a, b) => {
+        if (!a.project.id && b.project.id) return 1;
+        if (a.project.id && !b.project.id) return -1;
+        return sumMinutes(b.tasks) - sumMinutes(a.tasks) || compareProjects(a.project, b.project);
+      });
     }
 
     function openDailyReview() {
@@ -1452,6 +1634,7 @@
         task.done = true;
         task.completedDate = task.targetDate;
         task.completedAt = `${task.targetDate}T23:59:59`;
+        task.durationMinutes = task.durationMinutes || 0;
       }
       state.reviewIndex += 1;
       renderReview();
@@ -1581,6 +1764,7 @@
         createdAt: task.createdAt || new Date().toISOString(),
         completedAt: task.completedAt || null,
         completedDate: task.completedDate || (done && task.completedAt ? formatDate(task.completedAt) : ""),
+        durationMinutes: Math.max(0, Number.parseInt(task.durationMinutes || "0", 10) || 0),
         order: task.order || 9999
       };
     }
@@ -1593,6 +1777,57 @@
         ddl: project.ddl || "",
         createdAt: project.createdAt || new Date().toISOString()
       };
+    }
+
+    function sumMinutes(tasks) {
+      return tasks.reduce((total, task) => total + (Number(task.durationMinutes) || 0), 0);
+    }
+
+    function formatDuration(minutes) {
+      const total = Math.max(0, Number(minutes) || 0);
+      const hours = Math.floor(total / 60);
+      const mins = total % 60;
+      if (hours && mins) return `${hours}小时${mins}分钟`;
+      if (hours) return `${hours}小时`;
+      return `${mins}分钟`;
+    }
+
+    function openTimePie() {
+      const date = state.viewMode === "date" ? state.selectedDate : formatDate(new Date());
+      const tasks = state.tasks.filter((task) => task.targetDate === date && (Number(task.durationMinutes) || 0) > 0);
+      const groups = groupTasksByProject(tasks);
+      const total = sumMinutes(tasks);
+      els.timePieTitle.textContent = `${friendlyDate(date)} 时间分布 · ${formatDuration(total)}`;
+
+      if (!total) {
+        els.pieChart.style.setProperty("--pie", "#f2eadb");
+        els.pieLegend.innerHTML = `<div class="empty">当天还没有记录专注时间。</div>`;
+        els.timePieDialog.showModal();
+        return;
+      }
+
+      const colors = ["#b6402a", "#d48737", "#9f6718", "#2f7f78", "#4f8a69", "#8a684f"];
+      let cursor = 0;
+      const slices = groups.map((group, index) => {
+        const minutes = sumMinutes(group.tasks);
+        const start = cursor;
+        const end = cursor + (minutes / total) * 100;
+        cursor = end;
+        return `${colors[index % colors.length]} ${start}% ${end}%`;
+      });
+      els.pieChart.style.setProperty("--pie", `conic-gradient(${slices.join(", ")})`);
+      els.pieLegend.innerHTML = groups.map((group, index) => {
+        const minutes = sumMinutes(group.tasks);
+        const percent = Math.round((minutes / total) * 100);
+        return `
+          <div class="legend-item">
+            <span class="legend-color" style="background:${colors[index % colors.length]}"></span>
+            <span>${escapeHtml(group.project.name)}</span>
+            <strong>${formatDuration(minutes)} · ${percent}%</strong>
+          </div>
+        `;
+      }).join("");
+      els.timePieDialog.showModal();
     }
 
     function saveData() {
