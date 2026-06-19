@@ -7,11 +7,11 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #efd9b1;
-      --panel: #fffaf1;
-      --text: #332115;
-      --muted: #80634c;
-      --line: #dfc18b;
+      --bg: #ecd9b9;
+      --panel: #fffaf2;
+      --text: #332216;
+      --muted: #7b6250;
+      --line: #e3c99a;
       --red-bg: #fff3ec;
       --red-line: #b94f32;
       --red-text: #8f3225;
@@ -24,7 +24,7 @@
       --gold: #94610f;
       --teal: #287f74;
       --teal-soft: #dcefe6;
-      --shadow: 0 14px 32px rgba(80, 49, 20, 0.11);
+      --shadow: 0 12px 28px rgba(80, 49, 20, 0.08);
     }
 
     * {
@@ -35,9 +35,9 @@
       margin: 0;
       min-height: 100vh;
       background:
-        radial-gradient(circle at 12% 0%, rgba(185, 79, 50, 0.1), transparent 31%),
-        radial-gradient(circle at 88% 12%, rgba(40, 127, 116, 0.07), transparent 28%),
-        linear-gradient(180deg, #fff5df, var(--bg));
+        radial-gradient(circle at 10% 0%, rgba(185, 79, 50, 0.06), transparent 31%),
+        radial-gradient(circle at 90% 12%, rgba(40, 127, 116, 0.05), transparent 28%),
+        linear-gradient(180deg, #fff7e8, var(--bg));
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Microsoft YaHei", sans-serif;
@@ -687,20 +687,20 @@
 
     .day-state-strip {
       display: grid;
-      grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1.8fr) auto;
-      gap: 14px;
+      grid-template-columns: minmax(190px, 0.88fr) minmax(0, 1.75fr) auto;
+      gap: 18px;
       align-items: center;
-      min-height: 68px;
-      margin: 0 -8px 2px;
-      padding: 13px 16px;
+      min-height: 72px;
+      margin: 0 0 2px;
+      padding: 14px 16px;
       border: 1px solid rgba(227, 200, 155, 0.58);
       border-radius: 10px;
-      background: linear-gradient(135deg, var(--mood-bg, rgba(255, 250, 241, 0.9)), rgba(255, 253, 247, 0.94));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 10px 22px rgba(91, 58, 24, 0.05);
+      background: linear-gradient(135deg, var(--mood-bg, rgba(255, 250, 241, 0.9)), rgba(255, 253, 247, 0.95));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 8px 18px rgba(91, 58, 24, 0.045);
     }
 
     .day-state-strip.range-mode {
-      grid-template-columns: minmax(260px, 1.35fr) minmax(0, 1fr);
+      grid-template-columns: minmax(380px, 1.35fr) minmax(0, 1fr);
       cursor: default;
     }
 
@@ -711,7 +711,15 @@
     .mood-summary,
     .thought-summary {
       min-width: 0;
+    }
+
+    .day-state-strip.range-mode .mood-summary,
+    .thought-summary {
       cursor: pointer;
+    }
+
+    .day-state-strip:not(.range-mode) .mood-summary {
+      cursor: default;
     }
 
     .mood-summary {
@@ -735,9 +743,14 @@
     .thought-summary {
       display: grid;
       gap: 4px;
+      min-height: 46px;
+      padding: 8px 14px;
       color: var(--text);
       font-weight: 760;
       overflow: hidden;
+      border-left: 1px solid rgba(227, 200, 155, 0.52);
+      background: rgba(255, 253, 247, 0.42);
+      border-radius: 8px;
     }
 
     .thought-line {
@@ -770,27 +783,37 @@
     .mood-curve svg {
       display: block;
       width: 100%;
-      height: 54px;
+      height: 62px;
       overflow: visible;
     }
 
-    .mood-curve path {
+    .mood-curve .curve-segment {
       fill: none;
-      stroke: var(--mood-color, #4f8f76);
+      stroke: var(--segment-color, #4f8f76);
       stroke-width: 3;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
 
     .mood-curve circle {
-      fill: var(--mood-color, #4f8f76);
+      fill: var(--point-color, #4f8f76);
       stroke: #fffaf0;
       stroke-width: 2;
     }
 
     .mood-curve .curve-guide {
-      stroke: rgba(138, 104, 79, 0.16);
+      stroke: rgba(138, 104, 79, 0.14);
       stroke-width: 1;
+    }
+
+    .mood-curve .neutral-guide {
+      stroke: rgba(138, 104, 79, 0.46);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 5;
+    }
+
+    .mood-curve text {
+      font-weight: 720;
     }
 
     #dayStateDialog {
@@ -871,9 +894,9 @@
 
     .thought-item {
       display: grid;
-      grid-template-columns: 9px 44px minmax(0, 1fr);
+      grid-template-columns: 9px 44px minmax(0, 1fr) auto;
       gap: 8px;
-      align-items: baseline;
+      align-items: center;
       padding: 5px 2px;
       color: var(--text);
     }
@@ -893,11 +916,47 @@
       font-weight: 760;
     }
 
-    .thought-item div {
+    .thought-item .thought-text-field {
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .thought-actions {
+      display: inline-flex;
+      gap: 4px;
+      opacity: 0.46;
+      transition: opacity 140ms ease;
+    }
+
+    .thought-item:hover .thought-actions {
+      opacity: 1;
+    }
+
+    .thought-action {
+      width: 28px;
+      height: 28px;
+      min-height: 28px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(246, 221, 199, 0.62);
+    }
+
+    .thought-action:hover {
+      color: var(--accent);
+      background: rgba(246, 221, 199, 0.94);
+    }
+
+    .thought-edit-input {
+      width: 100%;
+      min-width: 0;
+      height: 30px;
+      padding: 0 8px;
+      border: 1px solid rgba(185, 79, 50, 0.28);
+      border-radius: 7px;
+      background: #fffdf7;
     }
 
     #noteDetailDialog {
@@ -919,7 +978,7 @@
     .mood-chart svg {
       display: block;
       width: 100%;
-      height: 220px;
+      height: 260px;
     }
 
     .thought-day {
@@ -2235,7 +2294,11 @@
       els.thoughtSummary.addEventListener("mousemove", moveHoverTooltip);
       els.thoughtSummary.addEventListener("mouseout", hideHoverTooltip);
       els.dayStateForm.addEventListener("submit", saveDayState);
+      els.thoughtList.addEventListener("click", handleThoughtListAction);
+      els.thoughtList.addEventListener("dblclick", handleThoughtInlineEdit);
+      els.thoughtList.addEventListener("contextmenu", handleThoughtInlineEdit);
       els.dayStateCancelBtn.addEventListener("click", () => els.dayStateDialog.close());
+      els.noteDetailBody.addEventListener("click", handleThoughtListAction);
       els.noteDetailCloseBtn.addEventListener("click", () => els.noteDetailDialog.close());
 
       els.projectRail.addEventListener("click", handleProjectRailClick);
@@ -3209,7 +3272,7 @@
       els.dayStateStrip.classList.add("range-mode");
       els.dayStateStrip.style.setProperty("--mood-bg", "rgba(255, 250, 241, 0.9)");
       els.dayStateStrip.style.setProperty("--mood-color", "var(--accent-strong)");
-      els.moodSummary.innerHTML = `${renderMoodCurve(notes)}<strong>${mooded.length ? `${mooded.length} 天有状态` : "暂无状态"}</strong>`;
+      els.moodSummary.innerHTML = `${renderMoodCurve(notes)}<strong>整体状态</strong>`;
       delete els.thoughtSummary.dataset.tooltip;
       delete els.thoughtSummary.dataset.tooltipAlways;
       els.thoughtSummary.innerHTML = `<span>想法记录</span><div class="thought-line"><span class="thought-text">这期间你有 ${thoughtDays} 天记录了自己的想法</span></div>`;
@@ -4025,37 +4088,49 @@
     }
 
     function renderMoodCurve(notes, detailed = false) {
+      const options = getMoodOptions();
       const scored = notes
-        .map((note, index) => ({ ...note, index, score: getMoodScore(note.mood) }))
+        .map((note, index) => ({ ...note, index, score: getMoodScore(note.mood), mood: getMoodOption(note.mood) }))
         .filter((note) => note.score);
-      if (!scored.length) return `<div class="mood-curve"><svg viewBox="0 0 320 64" role="img" aria-label="暂无状态曲线"><line class="curve-guide" x1="8" y1="32" x2="312" y2="32"></line></svg></div>`;
-      const width = detailed ? 680 : 320;
-      const height = detailed ? 220 : 64;
-      const padX = detailed ? 42 : 10;
-      const padY = detailed ? 24 : 10;
+      const width = detailed ? 720 : 460;
+      const height = detailed ? 260 : 86;
+      const padLeft = detailed ? 118 : 12;
+      const padRight = detailed ? 26 : 12;
+      const padTop = detailed ? 20 : 10;
+      const padBottom = detailed ? 34 : 12;
+      const innerWidth = width - padLeft - padRight;
+      const innerHeight = height - padTop - padBottom;
       const span = Math.max(1, notes.length - 1);
-      const xFor = (index) => padX + (index / span) * (width - padX * 2);
-      const yFor = (score) => padY + ((7 - score) / 6) * (height - padY * 2);
-      const points = scored.map((note) => `${xFor(note.index).toFixed(1)},${yFor(note.score).toFixed(1)}`);
-      const path = points.length === 1 ? `M ${points[0]}` : `M ${points.join(" L ")}`;
-      const guides = detailed ? [1, 2, 3, 4, 5, 6, 7].map((score) => {
-        const y = yFor(score).toFixed(1);
-        return `<line class="curve-guide" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line><text x="8" y="${Number(y) + 4}" fill="#8a684f" font-size="11">${score}</text>`;
-      }).join("") : `<line class="curve-guide" x1="${padX}" y1="${yFor(4)}" x2="${width - padX}" y2="${yFor(4)}"></line>`;
-      const circles = scored.map((note) => `<circle cx="${xFor(note.index).toFixed(1)}" cy="${yFor(note.score).toFixed(1)}" r="${detailed ? 5 : 4}"><title>${friendlyDate(note.date)} ${getMoodOption(note.mood).label}</title></circle>`).join("");
+      const xFor = (index) => padLeft + (index / span) * innerWidth;
+      const yFor = (score) => padTop + ((7 - score) / 6) * innerHeight;
+      const neutralY = yFor(4).toFixed(1);
+      const empty = !scored.length;
+      const guides = detailed
+        ? options.map((mood, index) => {
+            const score = index + 1;
+            const y = yFor(score).toFixed(1);
+            const guideClass = score === 4 ? "neutral-guide" : "curve-guide";
+            return `<line class="${guideClass}" x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}"></line><text x="8" y="${Number(y) + 4}" fill="${score === 4 ? "#7b6250" : "#9a826f"}" font-size="11">${mood.label}</text>`;
+          }).join("")
+        : `<line class="neutral-guide" x1="${padLeft}" y1="${neutralY}" x2="${width - padRight}" y2="${neutralY}"></line>`;
+      if (empty) return `<div class="mood-curve ${detailed ? "mood-chart" : ""}"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="暂无状态曲线">${guides}</svg></div>`;
+      const segments = scored.length === 1 ? "" : scored.slice(1).map((note, index) => {
+        const prev = scored[index];
+        const avg = (prev.score + note.score) / 2;
+        const color = avg > 4 ? "#c68138" : avg < 4 ? "#5f857d" : "#8a684f";
+        return `<line class="curve-segment" style="--segment-color:${color}" x1="${xFor(prev.index).toFixed(1)}" y1="${yFor(prev.score).toFixed(1)}" x2="${xFor(note.index).toFixed(1)}" y2="${yFor(note.score).toFixed(1)}"></line>`;
+      }).join("");
+      const singlePoint = scored.length === 1 ? `<line class="curve-segment" style="--segment-color:${scored[0].mood.color}" x1="${Math.max(padLeft, xFor(scored[0].index) - 14)}" y1="${yFor(scored[0].score).toFixed(1)}" x2="${Math.min(width - padRight, xFor(scored[0].index) + 14)}" y2="${yFor(scored[0].score).toFixed(1)}"></line>` : "";
+      const circles = scored.map((note) => `<circle style="--point-color:${note.mood.color}" cx="${xFor(note.index).toFixed(1)}" cy="${yFor(note.score).toFixed(1)}" r="${detailed ? 5 : 4}"><title>${friendlyDate(note.date)} ${note.mood.label}</title></circle>`).join("");
       const labels = detailed ? notes.map((note, index) => {
         if (notes.length > 12 && index % Math.ceil(notes.length / 8) !== 0 && index !== notes.length - 1) return "";
-        return `<text x="${xFor(index).toFixed(1)}" y="${height - 4}" text-anchor="middle" fill="#8a684f" font-size="10">${friendlyDate(note.date).replace(/周.*/, "")}</text>`;
+        return `<text x="${xFor(index).toFixed(1)}" y="${height - 7}" text-anchor="middle" fill="#8a684f" font-size="10">${friendlyDate(note.date).replace(/周.*/, "")}</text>`;
       }).join("") : "";
-      return `<div class="mood-curve ${detailed ? "mood-chart" : ""}"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="整体状态曲线">${guides}<path d="${path}"></path>${circles}${labels}</svg></div>`;
+      return `<div class="mood-curve ${detailed ? "mood-chart" : ""}"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="整体状态曲线">${guides}${segments}${singlePoint}${circles}${labels}</svg></div>`;
     }
 
     function handleMoodSummaryClick() {
-      if (isSingleDateContext()) {
-        openDayStateDialog();
-      } else {
-        openMoodDetailDialog();
-      }
+      if (!isSingleDateContext()) openMoodDetailDialog();
     }
 
     function handleThoughtSummaryClick() {
@@ -4077,7 +4152,7 @@
         ? withThoughts.map((note) => `
           <details class="thought-day" open>
             <summary><span>${friendlyDate(note.date)}</span><span>${note.thoughts.length} 条</span></summary>
-            <div class="thought-list">${note.thoughts.map(thoughtItemHtml).join("")}</div>
+            <div class="thought-list">${note.thoughts.map((item) => thoughtItemHtml(item, { date: note.date, editable: false })).join("")}</div>
           </details>
         `).join("")
         : `<div class="empty">这个范围还没有想法记录。</div>`;
@@ -4103,12 +4178,94 @@
 
     function renderThoughtList(note) {
       els.thoughtList.innerHTML = note.thoughts.length
-        ? note.thoughts.map(thoughtItemHtml).join("")
+        ? note.thoughts.map((item) => thoughtItemHtml(item, { date: state.editingDayStateDate || state.selectedDate, editable: true })).join("")
         : `<div class="empty">还没有想法记录。</div>`;
     }
 
-    function thoughtItemHtml(item) {
-      return `<div class="thought-item"><time>${formatThoughtTime(item.createdAt)}</time><div title="${escapeHtml(item.text)}">${escapeHtml(item.text)}</div></div>`;
+    function thoughtItemHtml(item, options = {}) {
+      const editable = options.editable !== false;
+      const date = options.date || state.editingDayStateDate || state.selectedDate;
+      const actions = editable
+        ? `<button class="thought-action" type="button" data-thought-action="edit" title="修改">✎</button><button class="thought-action" type="button" data-thought-action="copy" title="复制">⧉</button><button class="thought-action" type="button" data-thought-action="delete" title="删除">×</button>`
+        : `<button class="thought-action" type="button" data-thought-action="copy" title="复制">⧉</button><button class="thought-action" type="button" data-thought-action="delete" title="删除">×</button>`;
+      return `<div class="thought-item" data-date="${escapeHtml(date)}" data-thought-id="${escapeHtml(item.id)}"><time>${formatThoughtTime(item.createdAt)}</time><div class="thought-text-field" data-thought-action="edit" title="${escapeHtml(item.text)}">${escapeHtml(item.text)}</div><div class="thought-actions">${actions}</div></div>`;
+    }
+
+    function handleThoughtInlineEdit(event) {
+      const field = event.target.closest('[data-thought-action="edit"]');
+      const row = event.target.closest('.thought-item');
+      if (!field || !row || !els.dayStateDialog.open || !els.thoughtList.contains(row)) return;
+      event.preventDefault();
+      startThoughtInlineEdit(row);
+    }
+
+    function handleThoughtListAction(event) {
+      const actionEl = event.target.closest('[data-thought-action]');
+      if (!actionEl) return;
+      const action = actionEl.dataset.thoughtAction;
+      const row = event.target.closest('.thought-item');
+      if (!row) return;
+      if (action === "edit") {
+        if (els.dayStateDialog.open && els.thoughtList.contains(row)) startThoughtInlineEdit(row);
+        return;
+      }
+      const date = row.dataset.date;
+      const note = getDayNote(date);
+      const thought = note.thoughts.find((item) => item.id === row.dataset.thoughtId);
+      if (!thought) return;
+      if (action === "copy") {
+        copyText(thought.text);
+        return;
+      }
+      if (action === "delete") {
+        if (!window.confirm("确认删除这条想法记录吗？")) return;
+        note.thoughts = note.thoughts.filter((item) => item.id !== thought.id);
+        saveData();
+        if (els.dayStateDialog.open) renderThoughtList(note);
+        if (els.noteDetailDialog.open) {
+          els.noteDetailDialog.close();
+          openThoughtDetailDialog();
+        }
+        render();
+      }
+    }
+
+    function startThoughtInlineEdit(row) {
+      const date = row.dataset.date;
+      const note = getDayNote(date);
+      const thought = note.thoughts.find((item) => item.id === row.dataset.thoughtId);
+      const field = row.querySelector('.thought-text-field');
+      if (!thought || !field || field.querySelector('input')) return;
+      const input = document.createElement('input');
+      input.className = 'thought-edit-input';
+      input.value = thought.text;
+      field.replaceChildren(input);
+      input.focus();
+      input.select();
+      let done = false;
+      const finish = (save) => {
+        if (done) return;
+        done = true;
+        if (save) {
+          thought.text = input.value.trim() || thought.text;
+          saveData();
+        }
+        renderThoughtList(note);
+        render();
+      };
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') finish(true);
+        if (event.key === 'Escape') finish(false);
+      });
+      input.addEventListener('blur', () => finish(true));
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => window.prompt("复制这条想法", text));
+      } else {
+        window.prompt("复制这条想法", text);
+      }
     }
 
     function saveDayState(event) {
