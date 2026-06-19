@@ -332,6 +332,11 @@
       font-weight: 760;
     }
 
+    .drawer-section.pro-is-active {
+      border-color: rgba(63, 133, 103, 0.28);
+      background: linear-gradient(135deg, rgba(220, 239, 230, 0.46), rgba(255, 253, 247, 0.82));
+    }
+
     .pro-active-panel {
       display: grid;
       gap: 8px;
@@ -2400,9 +2405,8 @@
           <div class="account-row"><span>账号</span><div class="account-value" id="accountCodeDisplay">-</div><button class="tiny-button" type="button" data-account-copy="code">复制</button></div>
           <div class="account-row"><span>密码</span><div class="account-value" id="accountPasswordDisplay">••••••</div><button class="tiny-button" type="button" data-account-copy="password">复制</button></div>
         </div>
-        <div class="pro-activated-note">当前本机数据已经绑定到这个账号。账号仅供本人跨设备同步使用，请不要外借；如果忘记账号，我可以根据购买记录人工协助查询。</div>
+        <div class="pro-activated-note">当前数据已绑定到这个账号。为避免数据丢失，请不要外借账号；如果忘记账号，可以根据购买记录人工协助恢复。</div>
       </div>
-      <p class="drawer-note" id="proTestNote">当前是前端测试版：会先保存激活凭据与本机数据绑定状态；真正云端校验和找回需要接入服务器。</p>
     </section>
 
     <section class="drawer-section">
@@ -2418,20 +2422,19 @@
         </button>
       </div>
       <div class="sync-message" id="syncMessage" role="status"></div>
-      <p class="drawer-note">云端备份需要后端接口。接口接好后，这两个按钮就会负责跨设备手动同步。</p>
     </section>
 
     <section class="drawer-section">
       <h3>升级 Pro</h3>
       <div class="upgrade-card">
-        <strong>把复盘带到每一台设备，也把零散想法交给 AI 整理。</strong>
+        <strong>给复盘数据一个备份，不怕换设备、清缓存或误删。</strong>
         <ul class="pro-benefits">
-          <li>跨平台手动同步：电脑、平板、手机换着用</li>
-          <li>灵感投喂包：一键整理多天想法，方便交给 AI 分析</li>
+          <li>数据备份：把本机复盘数据保存到你的账号</li>
+          <li>防丢失恢复：清空缓存或换浏览器后可恢复</li>
           <li>一次性激活，后续新增 Pro 能力自动获得</li>
         </ul>
         <div class="upgrade-price"><strong>一次性获取 Pro</strong><span>联系我获取账号和密码</span></div>
-        <button class="ghost" type="button" id="copyProContactBtn">复制获取 Pro 说明</button>
+        <button class="ghost" type="button" id="copyProContactBtn">复制联系方式</button>
       </div>
     </section>
   </aside>
@@ -2791,6 +2794,8 @@
 
     function renderAccountDrawer() {
       const account = state.account || normalizeAccount(null);
+      const activationSection = document.querySelector("#proActivationSection");
+      if (activationSection) activationSection.classList.toggle("pro-is-active", account.proActive);
       els.accountStatus.classList.toggle("inactive", !account.proActive);
       els.accountStatus.innerHTML = account.proActive
         ? `<strong>Pro 已激活</strong><span>${maskCode(account.code)}</span>`
@@ -2842,14 +2847,14 @@
 
     function handleSyncUpload() {
       if (!state.account.proActive) {
-        showSyncMessage("请先激活 Pro，再使用跨平台同步。", false);
+        showSyncMessage("请先激活 Pro，再使用数据备份。", false);
         return;
       }
       state.account.lastUploadAt = new Date().toISOString();
       state.account.lastUploadPlatform = getPlatformLabel();
       saveData();
       renderAccountDrawer();
-      showSyncMessage("当前是前端测试版：已记录本机备份时间。正式版会上传到云端。", true);
+      showSyncMessage("测试版已记录本机备份时间。正式云端接入后，这里会完成真实上传。", true);
     }
 
     function handleSyncDownload() {
@@ -2857,7 +2862,7 @@
         showSyncMessage("请先激活 Pro，再下载云端数据。", false);
         return;
       }
-      showSyncMessage("下载会覆盖本机数据。正式版会在这里显示确认/取消按钮；当前测试版未执行下载。", false);
+      showSyncMessage("测试版不会覆盖本机数据。正式云端接入后，这里会先确认，再下载并覆盖本机。", false);
     }
 
     function showSyncMessage(text, positive = true) {
@@ -2868,10 +2873,10 @@
     }
 
     function copyProContactText() {
-      const text = "我想获取 Daily Review Pro：跨平台手动同步 + 灵感投喂包。";
+      const text = "我想获取 Daily Review Pro，请发我账号和密码。";
       copyText(text);
-      els.copyProContactBtn.textContent = "已复制获取说明";
-      setTimeout(() => { els.copyProContactBtn.textContent = "复制获取 Pro 说明"; }, 1200);
+      els.copyProContactBtn.textContent = "已复制";
+      setTimeout(() => { els.copyProContactBtn.textContent = "复制联系方式"; }, 1200);
     }
 
     function maskCode(code) {
