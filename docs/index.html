@@ -813,48 +813,50 @@
     }
 
     [data-task-field="projectId"],
-    [data-task-field="plannedStart"],
+    [data-task-field="timeBucket"],
     [data-task-field="targetDate"],
+    [data-task-field="durationMinutes"],
+    [data-task-field="completionRating"],
     [data-project-field="ddl"] {
       cursor: pointer;
     }
 
     table {
       width: 100%;
-      min-width: 1240px;
+      min-width: 1180px;
       table-layout: fixed;
       border-collapse: collapse;
     }
 
     th:nth-child(1),
-    td:nth-child(1) { width: 50px; }
+    td:nth-child(1) { width: 138px; }
 
     th:nth-child(2),
-    td:nth-child(2) { width: 146px; }
+    td:nth-child(2) { width: 250px; }
 
     th:nth-child(3),
-    td:nth-child(3) { width: 240px; }
+    td:nth-child(3) { width: 150px; }
 
     th:nth-child(4),
-    td:nth-child(4) { width: 150px; }
-
-    table.project-table-view th:nth-child(2),
-    table.project-table-view td:nth-child(2) { width: 150px; }
-
-    table.project-table-view th:nth-child(4),
-    table.project-table-view td:nth-child(4) { width: 146px; }
+    td:nth-child(4) { width: 130px; }
 
     th:nth-child(5),
-    td:nth-child(5) { width: 128px; }
+    td:nth-child(5) { width: 140px; }
 
     th:nth-child(6),
-    td:nth-child(6) { width: 110px; }
+    td:nth-child(6) { width: 142px; }
 
     th:nth-child(7),
-    td:nth-child(7) { width: 280px; }
+    td:nth-child(7) { width: 250px; }
 
     th:nth-child(8),
-    td:nth-child(8) { width: 130px; }
+    td:nth-child(8) { width: 90px; }
+
+    table.project-table-view th:nth-child(1),
+    table.project-table-view td:nth-child(1) { width: 160px; }
+
+    table.project-table-view th:nth-child(3),
+    table.project-table-view td:nth-child(3) { width: 138px; }
 
     th,
     td {
@@ -927,6 +929,11 @@
       border-left: 4px solid var(--green-line);
     }
 
+    .task-remark {
+      color: rgba(42, 111, 86, 0.82);
+      font-weight: 680;
+    }
+
     .task-row.dragging {
       opacity: 0.5;
     }
@@ -994,9 +1001,14 @@
       display: flex;
       gap: 7px;
       justify-content: flex-start;
-      min-width: 82px;
-      width: 82px;
+      min-width: 38px;
+      width: 38px;
       margin-left: 2px;
+    }
+
+    .single-action {
+      width: 38px;
+      min-width: 38px;
     }
 
     .icon-button {
@@ -1177,10 +1189,6 @@
 
     dialog::backdrop {
       background: rgba(65, 39, 23, 0.38);
-    }
-
-    #completeDialog {
-      width: min(620px, calc(100vw - 28px));
     }
 
     #timePieDialog {
@@ -1470,7 +1478,7 @@
     <section class="topbar" aria-label="日期控制">
       <div class="segmented" role="tablist" aria-label="快速切换日期">
         <button type="button" id="todayBtn">今天</button>
-        <button type="button" id="tomorrowBtn">明天</button>
+        <button type="button" id="tomorrowBtn">本周</button>
       </div>
 
       <div class="range-control">
@@ -1500,30 +1508,30 @@
     </section>
 
     <section class="main-content" id="dailyView">
-      <section class="status-panel" aria-label="Todo 完成情况">
-        <div class="metric">
-          <span>当前显示</span>
+      <section class="status-panel" aria-label="复盘统计">
+        <button class="metric-button active" type="button" id="totalMetricBtn" data-rating-filter="all">
+          <span>记录数</span>
           <strong id="totalCount">0</strong>
-        </div>
-        <div class="metric">
-          <span>未完成</span>
-          <strong id="pendingCount">0</strong>
-        </div>
-        <div class="metric">
-          <span>已完成</span>
+        </button>
+        <button class="metric-button" type="button" id="fullMetricBtn" data-rating-filter="full">
+          <span>圆满完成</span>
           <strong id="doneCount">0</strong>
-        </div>
-        <div class="metric">
-          <span>完成率</span>
-          <strong id="doneRate">0%</strong>
-        </div>
+        </button>
+        <button class="metric-button" type="button" id="partialMetricBtn" data-rating-filter="partial">
+          <span>有所推进</span>
+          <strong id="doneRate">0</strong>
+        </button>
+        <button class="metric-button" type="button" id="baselineMetricBtn" data-rating-filter="baseline">
+          <span>保底完成</span>
+          <strong id="pendingCount">0</strong>
+        </button>
         <button class="metric-button" type="button" id="focusTimeBtn">
-          <span>专注时间</span>
+          <span>累计时间</span>
           <strong id="focusTime">0m</strong>
         </button>
       </section>
 
-      <section class="todo-panel" aria-label="Todo 清单">
+      <section class="todo-panel" aria-label="事件清单">
         <div class="todo-tools">
           <button class="ghost" type="button" id="toggleTodoViewBtn">项目视图</button>
           <button class="ghost" type="button" id="resetSortBtn">默认排序</button>
@@ -1532,7 +1540,7 @@
           <thead id="taskHead"></thead>
           <tbody id="taskBody"></tbody>
         </table>
-        <div id="emptyState" class="empty" hidden>这一天还没有 todo。</div>
+        <div id="emptyState" class="empty" hidden>当前范围还没有复盘记录。</div>
       </section>
 
       <p class="hidden-note" id="hiddenNote"></p>
@@ -1568,17 +1576,38 @@
 
   <dialog id="taskDialog">
     <form class="dialog-body" id="taskForm" method="dialog">
-      <h2 id="taskDialogTitle">编辑 Todo</h2>
+      <h2 id="taskDialogTitle">记录事件</h2>
       <div class="dialog-grid">
-        <textarea id="taskText" placeholder="Todo 内容"></textarea>
+        <div class="field">
+          <label for="taskStartTime">时间</label>
+          <select id="taskStartTime">
+            <option value="morning">上午</option>
+            <option value="afternoon">下午</option>
+            <option value="evening">晚上</option>
+          </select>
+        </div>
+        <textarea id="taskText" placeholder="事件名称"></textarea>
         <div class="field">
           <label for="taskProject">归属项目</label>
           <select id="taskProject"></select>
         </div>
         <div class="field">
-          <label for="taskStartTime">计划开始时间</label>
-          <input id="taskStartTime" type="time" step="300">
+          <label for="taskDate">日期</label>
+          <input id="taskDate" type="date">
         </div>
+        <div class="field">
+          <label for="taskMinutes">投入时间</label>
+          <div class="minute-with-unit">
+            <input id="taskMinutes" type="number" min="0" step="1" placeholder="输入">
+            <span class="minute-unit">分钟</span>
+          </div>
+        </div>
+        <fieldset class="rating-options compact-rating">
+          <legend>达成感</legend>
+          <label><input type="radio" name="taskRating" value="baseline">🌱 保底完成</label>
+          <label><input type="radio" name="taskRating" value="partial">🌤 有所推进</label>
+          <label><input type="radio" name="taskRating" value="full" checked>🌟 圆满完成</label>
+        </fieldset>
         <input id="taskNote" type="text" placeholder="备注，可选">
       </div>
       <div class="dialog-actions">
@@ -1599,36 +1628,6 @@
     </div>
   </dialog>
 
-  <dialog id="completeDialog">
-    <form class="dialog-body" id="completeForm" method="dialog">
-      <h2>记录完成时间</h2>
-      <p>可以填写这条 todo 使用的专注时间，单位为分钟；不填也可以直接完成。</p>
-      <div class="time-input-row">
-        <div class="field">
-          <label for="completeTaskName">Todo</label>
-          <input id="completeTaskName" type="text" readonly>
-        </div>
-        <div class="field">
-          <label for="completeMinutes">专注时间</label>
-          <div class="minute-with-unit">
-            <input id="completeMinutes" type="number" min="0" step="1" placeholder="输入">
-            <span class="minute-unit">分钟</span>
-          </div>
-        </div>
-      </div>
-      <fieldset class="rating-options">
-        <legend>完成评价</legend>
-        <label><input type="radio" name="completionRating" value="baseline">🌱 保底</label>
-        <label><input type="radio" name="completionRating" value="partial" checked>◐ 部分</label>
-        <label><input type="radio" name="completionRating" value="full">🏁 全部</label>
-      </fieldset>
-      <div class="dialog-actions">
-        <button class="ghost" type="button" id="completeCancelBtn">取消</button>
-        <button class="primary" type="submit">完成</button>
-      </div>
-    </form>
-  </dialog>
-
   <dialog id="timePieDialog">
     <div class="dialog-body">
       <h2 id="timePieTitle">时间分布</h2>
@@ -1641,18 +1640,6 @@
       </div>
       <div class="dialog-actions">
         <button class="primary" type="button" id="timePieCloseBtn">关闭</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="reviewDialog">
-    <div class="dialog-body">
-      <h2>确认历史任务状态</h2>
-      <p id="reviewIntro"></p>
-      <div id="reviewBody"></div>
-      <div class="dialog-actions">
-        <button class="ghost" type="button" id="reviewKeepBtn">暂不完成</button>
-        <button class="primary" type="button" id="reviewDoneBtn">确认完成</button>
       </div>
     </div>
   </dialog>
@@ -1670,11 +1657,9 @@
     state.projectListCollapsed = parseStoredJson("daily-project-list-collapsed-v3", {});
     state.editingProjectId = null;
     state.editingTaskId = null;
-    state.reviewQueue = [];
-    state.reviewIndex = 0;
+    state.ratingFilter = "all";
     state.draggingTaskId = null;
     state.draggingProjectKey = null;
-    state.completingTaskId = null;
 
     const els = {
       todayBtn: document.querySelector("#todayBtn"),
@@ -1695,6 +1680,7 @@
       pendingCount: document.querySelector("#pendingCount"),
       doneCount: document.querySelector("#doneCount"),
       doneRate: document.querySelector("#doneRate"),
+      metricButtons: document.querySelectorAll("[data-rating-filter]"),
       focusTimeBtn: document.querySelector("#focusTimeBtn"),
       focusTime: document.querySelector("#focusTime"),
       resetSortBtn: document.querySelector("#resetSortBtn"),
@@ -1721,25 +1707,17 @@
       taskText: document.querySelector("#taskText"),
       taskProject: document.querySelector("#taskProject"),
       taskStartTime: document.querySelector("#taskStartTime"),
+      taskDate: document.querySelector("#taskDate"),
+      taskMinutes: document.querySelector("#taskMinutes"),
+      taskRating: document.querySelectorAll('input[name="taskRating"]'),
       taskNote: document.querySelector("#taskNote"),
       taskCancelBtn: document.querySelector("#taskCancelBtn"),
-      completeDialog: document.querySelector("#completeDialog"),
-      completeForm: document.querySelector("#completeForm"),
-      completeTaskName: document.querySelector("#completeTaskName"),
-      completeMinutes: document.querySelector("#completeMinutes"),
-      completeRating: document.querySelectorAll('input[name="completionRating"]'),
-      completeCancelBtn: document.querySelector("#completeCancelBtn"),
       timePieDialog: document.querySelector("#timePieDialog"),
       timePieTitle: document.querySelector("#timePieTitle"),
       pieChart: document.querySelector("#pieChart"),
       pieTotal: document.querySelector("#pieTotal"),
       pieLegend: document.querySelector("#pieLegend"),
-      timePieCloseBtn: document.querySelector("#timePieCloseBtn"),
-      reviewDialog: document.querySelector("#reviewDialog"),
-      reviewIntro: document.querySelector("#reviewIntro"),
-      reviewBody: document.querySelector("#reviewBody"),
-      reviewKeepBtn: document.querySelector("#reviewKeepBtn"),
-      reviewDoneBtn: document.querySelector("#reviewDoneBtn")
+      timePieCloseBtn: document.querySelector("#timePieCloseBtn")
     };
 
     init();
@@ -1748,7 +1726,7 @@
       els.rangeStart.value = state.selectedDate;
 
       els.todayBtn.addEventListener("click", () => selectSingleDate(formatDate(new Date())));
-      els.tomorrowBtn.addEventListener("click", () => selectSingleDate(addDays(formatDate(new Date()), 1)));
+      els.tomorrowBtn.addEventListener("click", selectWeekToDate);
       els.rangeStart.addEventListener("change", updateDateControls);
       els.rangeEnd.addEventListener("change", updateDateControls);
       els.clearRangeBtn.addEventListener("click", () => selectSingleDate(els.rangeStart.value || formatDate(new Date())));
@@ -1784,19 +1762,11 @@
       els.taskBody.addEventListener("dragend", handleDragEnd);
       els.taskForm.addEventListener("submit", saveTask);
       els.taskCancelBtn.addEventListener("click", () => els.taskDialog.close());
-      els.completeForm.addEventListener("submit", saveCompletionTime);
-      els.completeCancelBtn.addEventListener("click", () => {
-        state.completingTaskId = null;
-        els.completeDialog.close();
-      });
+      els.metricButtons.forEach((button) => button.addEventListener("click", () => setRatingFilter(button.dataset.ratingFilter || "all")));
       els.focusTimeBtn.addEventListener("click", openTimePie);
       els.timePieCloseBtn.addEventListener("click", () => els.timePieDialog.close());
 
-      els.reviewKeepBtn.addEventListener("click", () => answerReview(false));
-      els.reviewDoneBtn.addEventListener("click", () => answerReview(true));
-
       render();
-      openDailyReview();
     }
 
     function updateDateControls() {
@@ -1823,6 +1793,30 @@
       state.viewMode = "date";
       els.rangeStart.value = date;
       els.rangeEnd.value = "";
+      render();
+    }
+
+    function selectWeekToDate() {
+      const today = formatDate(new Date());
+      const start = getWeekStart(today);
+      state.selectedDate = today;
+      state.rangeStart = start;
+      state.rangeEnd = today;
+      state.viewMode = "range";
+      els.rangeStart.value = start;
+      els.rangeEnd.value = today;
+      render();
+    }
+
+    function getWeekStart(dateString) {
+      const date = new Date(`${dateString}T00:00:00`);
+      const day = date.getDay() || 7;
+      date.setDate(date.getDate() - day + 1);
+      return formatDate(date);
+    }
+
+    function setRatingFilter(filter) {
+      state.ratingFilter = filter;
       render();
     }
 
@@ -2098,9 +2092,8 @@
 
     function deleteProject(project, refreshList = false) {
       const linkedTasks = state.tasks.filter((task) => task.projectId === project.id);
-      const completedCount = linkedTasks.filter((task) => task.done).length;
-      if (completedCount) {
-        const ok = window.confirm(`项目“${project.name}”下有 ${completedCount} 条已完成 todo。删除项目后，这些 todo 不会被删除，但会归入“未归类”。确认删除项目吗？`);
+      if (linkedTasks.length) {
+        const ok = window.confirm(`项目“${project.name}”下有 ${linkedTasks.length} 条复盘记录。删除项目后，这些记录不会被删除，但会归入“未归类”。确认删除项目吗？`);
         if (!ok) return;
       }
       state.tasks.forEach((task) => {
@@ -2115,7 +2108,7 @@
     function handleTaskClick(event) {
       const addButton = event.target.closest("[data-add-task]");
       if (addButton) {
-        addBlankTask();
+        openTaskDialog();
         return;
       }
 
@@ -2124,26 +2117,12 @@
       const task = state.tasks.find((item) => item.id === button.dataset.id);
       if (!task) return;
 
-      if (button.dataset.action === "toggle") {
-        if (task.done) {
-          task.done = false;
-          task.completedAt = null;
-          task.completedDate = "";
-          task.durationMinutes = 0;
-          task.completionRating = "";
-        } else {
-          openCompletionDialog(task);
-          return;
-        }
-      }
-
-      if (button.dataset.action === "edit") {
-        openTaskDialog(task);
-        return;
-      }
-
       if (button.dataset.action === "delete") {
-        if (task.done && !window.confirm("这条 todo 已完成，删除后完成记录和专注时间也会一起删除。确认删除吗？")) return;
+        const minutes = Number(task.durationMinutes) || 0;
+        const warning = minutes
+          ? `删除后这条事件和 ${formatDuration(minutes)} 投入时间都会从统计中移除。确认删除吗？`
+          : "删除后这条事件会从复盘记录中移除。确认删除吗？";
+        if (!window.confirm(warning)) return;
         state.tasks = state.tasks.filter((item) => item.id !== task.id);
       }
 
@@ -2151,82 +2130,68 @@
       render();
     }
 
-    function addBlankTask() {
-      const task = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}`,
-        text: "未命名",
-        note: "",
-        projectId: "",
-        plannedStart: "",
-        timeBucket: "",
-        targetDate: state.viewMode === "all" ? formatDate(new Date()) : state.selectedDate,
-        done: false,
-        createdAt: new Date().toISOString(),
-        completedAt: null,
-        completedDate: "",
-        durationMinutes: 0,
-        completionRating: "",
-        manualOrder: false,
-        order: nextOrder()
-      };
-      state.tasks.unshift(task);
-      saveData();
-      render();
-    }
-
-    function openTaskDialog(task) {
-      state.editingTaskId = task.id;
-      els.taskDialogTitle.textContent = task.text ? "修改 Todo" : "完善 Todo";
-      els.taskText.value = task.text;
-      els.taskStartTime.value = task.plannedStart || "";
-      els.taskNote.value = task.note || "";
-      renderProjectOptions(els.taskProject, task.projectId || "");
+    function openTaskDialog(task = null) {
+      state.editingTaskId = task ? task.id : null;
+      els.taskDialogTitle.textContent = task ? "修改事件" : "记录事件";
+      els.taskText.value = task ? task.text : "";
+      els.taskStartTime.value = task ? getTaskDisplayBucket(task) : getCurrentTimeBucket();
+      els.taskDate.value = task ? task.targetDate : getDefaultRecordDate();
+      els.taskMinutes.value = task && task.durationMinutes ? task.durationMinutes : "";
+      els.taskNote.value = task ? task.note || "" : "";
+      els.taskRating.forEach((input) => {
+        input.checked = input.value === (task ? task.completionRating || "full" : "full");
+      });
+      renderProjectOptions(els.taskProject, task ? task.projectId || "" : "");
       els.taskDialog.showModal();
       els.taskText.focus();
     }
 
     function saveTask(event) {
       event.preventDefault();
-      const task = state.tasks.find((item) => item.id === state.editingTaskId);
-      if (task) {
-        task.text = els.taskText.value.trim();
-        task.note = els.taskNote.value.trim();
-        task.projectId = els.taskProject.value || "";
-        task.plannedStart = els.taskStartTime.value || "";
-        task.timeBucket = task.plannedStart ? "" : "";
-        if (!task.manualOrder) task.order = nextOrder();
-      }
+      const editing = state.tasks.find((item) => item.id === state.editingTaskId);
+      const task = editing || {
+        id: crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        manualOrder: false,
+        order: nextOrder(),
+        projectManualOrder: false,
+        projectOrder: 9999
+      };
+
+      task.text = els.taskText.value.trim() || "未命名";
+      task.note = els.taskNote.value.trim();
+      task.projectId = els.taskProject.value || "";
+      task.plannedStart = "";
+      task.timeBucket = normalizeTimeBucket(els.taskStartTime.value) || getCurrentTimeBucket();
+      task.targetDate = isValidDateString(els.taskDate.value) ? els.taskDate.value : formatDate(new Date());
+      task.durationMinutes = Math.max(0, Number.parseInt(els.taskMinutes.value || "0", 10) || 0);
+      task.completionRating = [...els.taskRating].find((input) => input.checked)?.value || "full";
+      task.done = true;
+      task.completedAt = task.completedAt || new Date().toISOString();
+      task.completedDate = task.targetDate;
+      if (!task.manualOrder) task.order = nextOrder();
+
+      if (!editing) state.tasks.unshift(task);
       state.editingTaskId = null;
       els.taskDialog.close();
       saveData();
       render();
     }
 
-    function openCompletionDialog(task) {
-      state.completingTaskId = task.id;
-      els.completeTaskName.value = task.text || "空白 Todo";
-      els.completeMinutes.value = task.durationMinutes || "";
-      els.completeRating.forEach((input) => {
-        input.checked = input.value === (task.completionRating || "partial");
-      });
-      els.completeDialog.showModal();
-      els.completeMinutes.focus();
+    function getDefaultRecordDate() {
+      if (state.viewMode === "date") return state.selectedDate;
+      return formatDate(new Date());
     }
 
-    function saveCompletionTime(event) {
-      event.preventDefault();
-      const task = state.tasks.find((item) => item.id === state.completingTaskId);
-      if (task) {
-        task.done = true;
-        task.completedAt = new Date().toISOString();
-        task.completedDate = formatDate(new Date());
-        task.durationMinutes = Math.max(0, Number.parseInt(els.completeMinutes.value || "0", 10) || 0);
-        task.completionRating = [...els.completeRating].find((input) => input.checked)?.value || "partial";
-      }
-      state.completingTaskId = null;
-      els.completeDialog.close();
-      saveData();
-      render();
+    function getCurrentTimeBucket() {
+      const hour = new Date().getHours();
+      if (hour < 12) return "morning";
+      if (hour < 18) return "afternoon";
+      return "evening";
+    }
+
+    function normalizeTimeBucket(value) {
+      return ["morning", "afternoon", "evening"].includes(value) ? value : "";
     }
 
     let tooltipTimer = null;
@@ -2284,14 +2249,16 @@
       const task = state.tasks.find((item) => item.id === row.dataset.taskId);
       if (!task) return;
       const field = fieldEl.dataset.taskField;
-      if (task.done && field !== "projectId") return;
       event.preventDefault();
 
       const configByField = {
         text: { type: "text", value: task.text || "", save: (value) => { task.text = value.trim() || "未命名"; } },
-        projectId: { type: "select", value: task.projectId || "", save: (value) => { task.projectId = value; } },
-        plannedStart: { type: "time", value: task.plannedStart || "", save: (value) => { task.plannedStart = isValidTimeString(value) ? value : ""; task.timeBucket = value ? "" : ""; task.manualOrder = false; } },
-        targetDate: { type: "date", value: task.targetDate || formatDate(new Date()), save: (value) => { task.targetDate = isValidDateString(value) ? value : formatDate(new Date()); } }
+        note: { type: "text", value: task.note || "", save: (value) => { task.note = value.trim(); } },
+        projectId: { type: "select", value: task.projectId || "", optionsHtml: projectOptionsHtml(task.projectId || ""), save: (value) => { task.projectId = value; } },
+        timeBucket: { type: "select", value: getTaskDisplayBucket(task), optionsHtml: timeBucketOptionsHtml(getTaskDisplayBucket(task)), save: (value) => { task.timeBucket = normalizeTimeBucket(value) || "morning"; task.plannedStart = ""; task.manualOrder = false; } },
+        targetDate: { type: "date", value: task.targetDate || formatDate(new Date()), save: (value) => { task.targetDate = isValidDateString(value) ? value : formatDate(new Date()); task.completedDate = task.targetDate; } },
+        durationMinutes: { type: "number", value: task.durationMinutes || "", save: (value) => { task.durationMinutes = Math.max(0, Number.parseInt(value || "0", 10) || 0); } },
+        completionRating: { type: "select", value: task.completionRating || "full", optionsHtml: ratingOptionsHtml(task.completionRating || "full"), save: (value) => { task.completionRating = value || "full"; } }
       };
       const config = configByField[field];
       if (!config) return;
@@ -2440,7 +2407,7 @@
       const editor = document.createElement(config.type === "select" ? "select" : "input");
       editor.className = config.type === "select" ? "inline-select" : "inline-input";
       if (config.type !== "select") editor.type = config.type;
-      if (config.type === "select") editor.innerHTML = projectOptionsHtml(config.value);
+      if (config.type === "select") editor.innerHTML = config.optionsHtml || projectOptionsHtml(config.value);
       editor.value = config.value || "";
 
       let finished = false;
@@ -2477,7 +2444,7 @@
           task.projectOrder = 9999;
         });
       } else {
-        getVisibleTasks().forEach((task, index) => {
+        getBaseVisibleTasks().forEach((task, index) => {
           task.manualOrder = false;
           task.order = index + 1;
         });
@@ -2514,7 +2481,6 @@
       if (!source || !target) return false;
       const sourceSection = getTaskDragSection(source);
       const targetSection = getTaskDragSection(target);
-      if (!source.plannedStart) return true;
       return sourceSection === targetSection;
     }
 
@@ -2548,11 +2514,12 @@
     function assignDraggedTaskBucket(sourceId, targetId) {
       const source = state.tasks.find((task) => task.id === sourceId);
       const target = state.tasks.find((task) => task.id === targetId);
-      if (!source || !target || source.plannedStart) return;
+      if (!source || !target) return;
       const targetSection = getTaskDisplaySection(target);
       if (targetSection === "上午") source.timeBucket = "morning";
       else if (targetSection === "下午") source.timeBucket = "afternoon";
-      else source.timeBucket = "";
+      else source.timeBucket = "evening";
+      source.plannedStart = "";
     }
 
     function reorderVisibleTasks(sourceId, targetId) {
@@ -2588,16 +2555,17 @@
       });
     }
 
-    function getVisibleTasks() {
-      const today = formatDate(new Date());
+    function getBaseVisibleTasks() {
       const visible = state.tasks.filter((task) => {
         if (state.viewMode === "all") return true;
-        if (state.viewMode === "calendar") return task.targetDate >= state.rangeStart && task.targetDate <= state.rangeEnd;
-        if (task.targetDate !== state.selectedDate) return false;
-        if (!task.done && task.targetDate < today) return false;
-        return true;
+        if (state.viewMode === "calendar" || state.viewMode === "range") return task.targetDate >= state.rangeStart && task.targetDate <= state.rangeEnd;
+        return task.targetDate === state.selectedDate;
       });
       return sortVisibleTasks(visible);
+    }
+
+    function getVisibleTasks() {
+      return applyRatingFilter(getBaseVisibleTasks());
     }
 
     function sortVisibleTasks(tasks) {
@@ -2606,10 +2574,6 @@
         : compareTasks(a, b));
     }
 
-    function getHiddenOverdueCount() {
-      const today = formatDate(new Date());
-      return state.tasks.filter((task) => !task.done && task.targetDate < today).length;
-    }
 
     function render() {
       renderTopbar();
@@ -2629,10 +2593,10 @@
 
     function renderTopbar() {
       const today = formatDate(new Date());
-      const tomorrow = addDays(today, 1);
+      const weekStart = getWeekStart(today);
 
       els.todayBtn.classList.toggle("active", state.viewMode === "date" && state.selectedDate === today);
-      els.tomorrowBtn.classList.toggle("active", state.viewMode === "date" && state.selectedDate === tomorrow);
+      els.tomorrowBtn.classList.toggle("active", state.viewMode === "range" && state.rangeStart === weekStart && state.rangeEnd === today);
       els.showAllBtn.textContent = state.viewMode === "all" ? "返回日期" : "全部记录";
       els.clearRangeBtn.hidden = !state.rangeEnd && state.viewMode !== "calendar";
     }
@@ -2703,29 +2667,35 @@
     }
 
     function renderDaily() {
-      const visibleTasks = getVisibleTasks();
-      const pending = visibleTasks.filter((task) => !task.done).length;
-      const done = visibleTasks.filter((task) => task.done).length;
-      const total = visibleTasks.length;
+      const baseTasks = getBaseVisibleTasks();
+      const visibleTasks = applyRatingFilter(baseTasks);
+      const ratingCounts = countRatings(baseTasks);
+      const total = baseTasks.length;
 
       els.totalCount.textContent = total;
-      els.pendingCount.textContent = pending;
-      els.doneCount.textContent = done;
-      els.doneRate.textContent = total ? `${Math.round((done / total) * 100)}%` : "0%";
-      els.focusTime.textContent = formatCompactDuration(sumMinutes(visibleTasks));
+      els.doneCount.textContent = ratingCounts.full;
+      els.doneRate.textContent = ratingCounts.partial;
+      els.pendingCount.textContent = ratingCounts.baseline;
+      els.focusTime.textContent = formatCompactDuration(sumMinutes(baseTasks));
+      els.metricButtons.forEach((button) => button.classList.toggle("active", (button.dataset.ratingFilter || "all") === state.ratingFilter));
       renderTaskHeader();
 
       els.taskBody.innerHTML = addTaskRow() + renderTaskRows(visibleTasks);
       els.emptyState.hidden = visibleTasks.length > 0;
+      els.hiddenNote.textContent = state.ratingFilter === "all" ? "" : `当前仅显示：${getCompletionRating(state.ratingFilter).label}`;
+    }
 
-      const hiddenCount = getHiddenOverdueCount();
-      els.hiddenNote.textContent = hiddenCount
-        ? `已隐藏 ${hiddenCount} 条早于今天且未完成的红色任务。需要查看时点“全部记录”。`
-        : "";
+    function countRatings(tasks) {
+      return tasks.reduce((counts, task) => {
+        const key = task.completionRating || "full";
+        if (counts[key] !== undefined) counts[key] += 1;
+        return counts;
+      }, { full: 0, partial: 0, baseline: 0 });
+    }
 
-      if (state.viewMode === "all") {
-        els.hiddenNote.textContent = "全部记录会显示历史红色任务；日常日期视图会自动隐藏早于今天的未完成任务。";
-      }
+    function applyRatingFilter(tasks) {
+      if (state.ratingFilter === "all") return tasks;
+      return tasks.filter((task) => (task.completionRating || "full") === state.ratingFilter);
     }
 
     function renderTaskHeader() {
@@ -2733,8 +2703,8 @@
       els.taskTable.classList.toggle("project-table-view", projectView);
       els.toggleTodoViewBtn.textContent = projectView ? "时间视图" : "项目视图";
       els.taskHead.innerHTML = projectView
-        ? `<tr><th>排序</th><th>项目</th><th>Todo</th><th>计划开始</th><th>日期</th><th>状态</th><th>完成记录</th><th>操作</th></tr>`
-        : `<tr><th>排序</th><th>计划开始</th><th>Todo</th><th>项目</th><th>日期</th><th>状态</th><th>完成记录</th><th>操作</th></tr>`;
+        ? `<tr><th>项目</th><th>事件</th><th>时间</th><th>日期</th><th>投入时间</th><th>达成感</th><th>备注</th><th>操作</th></tr>`
+        : `<tr><th>时间</th><th>事件</th><th>项目</th><th>日期</th><th>投入时间</th><th>达成感</th><th>备注</th><th>操作</th></tr>`;
     }
 
     function toggleTodoListView() {
@@ -2763,15 +2733,28 @@
     }
 
     function getTaskDisplaySection(task) {
-      if (task.plannedStart) return getTimeSection(task.plannedStart);
-      if (task.timeBucket === "morning") return "上午";
-      if (task.timeBucket === "afternoon") return "下午";
-      return "未安排";
+      const bucket = getTaskDisplayBucket(task);
+      if (bucket === "morning") return "上午";
+      if (bucket === "afternoon") return "下午";
+      return "晚上";
+    }
+
+    function getTaskDisplayBucket(task) {
+      if (normalizeTimeBucket(task.timeBucket)) return task.timeBucket;
+      if (task.plannedStart) {
+        const section = getTimeSection(task.plannedStart);
+        if (section === "上午") return "morning";
+        if (section === "下午") return "afternoon";
+        if (section === "晚上") return "evening";
+      }
+      return "morning";
     }
 
     function getTimeSection(time) {
       if (!time) return "";
-      return time < "12:00" ? "上午" : "下午";
+      if (time < "12:00") return "上午";
+      if (time < "18:00") return "下午";
+      return "晚上";
     }
 
     function getSectionRank(task) {
@@ -2785,7 +2768,7 @@
       return `
         <tr class="add-row">
           <td colspan="8">
-            <button class="add-todo" type="button" data-add-task title="添加空白 todo" aria-label="添加空白 todo">+</button>
+            <button class="add-todo" type="button" data-add-task title="记录一件完成的事" aria-label="记录一件完成的事">+</button>
           </td>
         </tr>
       `;
@@ -2793,37 +2776,27 @@
 
     function taskRow(task) {
       const project = getProjectForTask(task);
-      const status = task.done ? "已完成" : "未完成";
-      const actionLabel = task.done ? "↺" : "✓";
-      const actionTitle = task.done ? "标记为未完成" : "标记为完成";
-      const rowClass = task.done ? "done" : "pending";
-      const text = task.text || "空白 Todo";
-      const note = task.note ? `<div class="task-note">${escapeHtml(task.note)}</div>` : "";
-      const rating = getCompletionRating(task.completionRating);
-      const completedDate = task.completedDate
-        ? `${friendlyDate(task.completedDate)}${task.durationMinutes ? ` · ${formatDuration(task.durationMinutes)}` : ""}${rating ? ` · ${rating.emoji}` : ""}`
-        : "未完成";
-
+      const text = task.text || "未命名";
+      const note = task.note || "";
+      const rating = getCompletionRating(task.completionRating || "full");
       const projectCell = `<div class="chip" data-task-field="projectId" title="双击或右键修改项目">${escapeHtml(project.name)}</div>`;
-      const titleCell = `<div class="task-title" data-task-field="text" data-tooltip="${escapeHtml(text)}" aria-label="${escapeHtml(text)}">${escapeHtml(text)}</div>${note}`;
-      const timeCell = `<span class="planned-time ${task.plannedStart ? "" : "empty-time"}" data-task-field="plannedStart" title="${task.done ? "" : "双击或右键修改计划开始时间"}">${formatPlannedTime(task.plannedStart)}</span>`;
-      const dateCell = `<span data-task-field="targetDate" title="${task.done ? "" : "双击或右键修改日期"}">${friendlyDate(task.targetDate)}</span>`;
-      const commonCells = `
-          <td>${dateCell}</td>
-          <td><span class="status">${status}</span></td>
-          <td><span class="completion-record">${completedDate}</span></td>
+      const titleCell = `<div class="task-title" data-task-field="text" data-tooltip="${escapeHtml(text)}" aria-label="${escapeHtml(text)}">${escapeHtml(text)}</div>`;
+      const timeCell = `<span class="planned-time" data-task-field="timeBucket" title="双击或右键修改时间">${getTaskDisplaySection(task)}</span>`;
+      const dateCell = `<span data-task-field="targetDate" title="双击或右键修改日期">${friendlyDate(task.targetDate)}</span>`;
+      const durationCell = `<span class="completion-record" data-task-field="durationMinutes" title="双击或右键修改投入时间">${task.durationMinutes ? formatDuration(task.durationMinutes) : "未填写"}</span>`;
+      const ratingCell = `<span class="status" data-task-field="completionRating" title="双击或右键修改达成感">${rating.emoji} ${rating.label}</span>`;
+      const noteCell = `<div class="task-title task-remark" data-task-field="note" data-tooltip="${escapeHtml(note)}" aria-label="${escapeHtml(note)}">${note ? escapeHtml(note) : "-"}</div>`;
+      const actionCell = `
           <td>
-            <div class="actions">
-              <button class="icon-button ${task.done ? "action-secondary" : "action-complete"}" type="button" data-action="toggle" data-id="${task.id}" title="${actionTitle}" aria-label="${actionTitle}">${actionLabel}</button>
-              <button class="icon-button action-danger" type="button" data-action="delete" data-id="${task.id}" title="删除 Todo" aria-label="删除 Todo">×</button>
+            <div class="actions single-action">
+              <button class="icon-button action-danger" type="button" data-action="delete" data-id="${task.id}" title="删除事件" aria-label="删除事件">×</button>
             </div>
           </td>`;
       const orderedCells = state.todoListView === "project"
-        ? `<td>${projectCell}</td><td>${titleCell}</td><td>${timeCell}</td>${commonCells}`
-        : `<td>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td>${commonCells}`;
+        ? `<td><span class="drag-handle">↕</span>${projectCell}</td><td>${titleCell}</td><td>${timeCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`
+        : `<td><span class="drag-handle">↕</span>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`;
       return `
-        <tr class="task-row ${rowClass}" draggable="true" data-task-id="${task.id}" data-project-key="${getTaskProjectKey(task)}">
-          <td><span class="drag-handle">↕</span></td>
+        <tr class="task-row done" draggable="true" data-task-id="${task.id}" data-project-key="${getTaskProjectKey(task)}">
           ${orderedCells}
         </tr>
       `;
@@ -2842,7 +2815,7 @@
       const projectGroups = groupTasksByProject(tasks);
       const content = projectGroups.length
         ? projectGroups.map(calendarProject).join("")
-        : `<div class="empty">没有 todo</div>`;
+        : `<div class="empty">没有记录</div>`;
 
       return `
         <article class="day-card ${date === today ? "today" : ""}">
@@ -2879,13 +2852,12 @@
     }
 
     function calendarProject(group) {
-      const done = group.tasks.filter((task) => task.done).length;
       const minutes = sumMinutes(group.tasks);
       const className = group.project.id ? "calendar-project" : "calendar-project unassigned";
       return `
         <div class="${className}">
           <strong title="${escapeHtml(group.project.name)}">${escapeHtml(group.project.name)}${group.project.id ? "" : " · 待整理"}</strong>
-          <span>${group.tasks.length} 条 todo，完成 ${done} 条</span>
+          <span>${group.tasks.length} 条记录</span>
           <span>累计时间：${formatDuration(minutes)}</span>
         </div>
       `;
@@ -2911,65 +2883,29 @@
       });
     }
 
-    function openDailyReview() {
-      const today = formatDate(new Date());
-      if (state.lastReviewDate === today) return;
-
-      state.reviewQueue = state.tasks
-        .filter((task) => !task.done && task.targetDate < today)
-        .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || compareTasks(a, b));
-
-      if (!state.reviewQueue.length) {
-        state.lastReviewDate = today;
-        saveData();
-        return;
-      }
-
-      state.reviewIndex = 0;
-      renderReview();
-      els.reviewDialog.showModal();
-    }
-
-    function renderReview() {
-      const task = state.reviewQueue[state.reviewIndex];
-      if (!task) {
-        state.lastReviewDate = formatDate(new Date());
-        saveData();
-        els.reviewDialog.close();
-        render();
-        return;
-      }
-
-      const project = getProjectForTask(task);
-      els.reviewIntro.textContent = `${friendlyDate(task.targetDate)} 的 todo 还没有确认状态。`;
-      els.reviewBody.innerHTML = `
-        <div class="review-task">
-          <strong>${escapeHtml(task.text || "空白 Todo")}</strong>
-          <div class="review-meta">${escapeHtml(project.name)} · ${state.reviewIndex + 1}/${state.reviewQueue.length}</div>
-        </div>
-      `;
-    }
-
-    function answerReview(isDone) {
-      const task = state.reviewQueue[state.reviewIndex];
-      if (task && isDone) {
-        task.done = true;
-        task.completedDate = task.targetDate;
-        task.completedAt = `${task.targetDate}T23:59:59`;
-        task.durationMinutes = task.durationMinutes || 0;
-        task.completionRating = task.completionRating || "";
-      }
-      state.reviewIndex += 1;
-      renderReview();
-    }
-
     function renderProjectOptions(select, selectedValue = "") {
       select.innerHTML = projectOptionsHtml(selectedValue);
       select.value = state.projects.some((project) => project.id === selectedValue) ? selectedValue : "";
     }
 
+    function timeBucketOptionsHtml(selectedValue = "") {
+      const options = [
+        ["morning", "上午"],
+        ["afternoon", "下午"],
+        ["evening", "晚上"]
+      ];
+      return options.map(([value, label]) => `<option value="${value}" ${value === selectedValue ? "selected" : ""}>${label}</option>`).join("");
+    }
+
+    function ratingOptionsHtml(selectedValue = "") {
+      return Object.entries(getRatingMap()).map(([value, rating]) => `<option value="${value}" ${value === selectedValue ? "selected" : ""}>${rating.emoji} ${rating.label}</option>`).join("");
+    }
+
     function projectOptionsHtml(selectedValue = "") {
-      const projects = [...state.projects].sort(compareProjects);
+      const today = formatDate(new Date());
+      const projects = [...state.projects]
+        .filter((project) => project.id === selectedValue || !hasProjectDdl(project) || project.ddl >= today)
+        .sort(compareProjects);
       return [`<option value="" ${selectedValue ? "" : "selected"}>${UNASSIGNED_PROJECT}</option>`]
         .concat(projects.map((project) => `<option value="${project.id}" ${project.id === selectedValue ? "selected" : ""}>${escapeHtml(project.name)}</option>`))
         .join("");
@@ -2986,6 +2922,8 @@
           if (bManual === null) return -1;
           return aManual - bManual;
         }
+        const minuteDiff = getProjectTaskMinutes(bKey, tasks) - getProjectTaskMinutes(aKey, tasks);
+        if (minuteDiff) return minuteDiff;
         const countDiff = getProjectTaskCount(bKey, tasks) - getProjectTaskCount(aKey, tasks);
         if (countDiff) return countDiff;
         return compareProjects(getProjectForTask(a), getProjectForTask(b));
@@ -2994,15 +2932,20 @@
     }
 
     function compareTaskWithinProject(a, b) {
-      const aTime = a.plannedStart || "99:99";
-      const bTime = b.plannedStart || "99:99";
-      if (aTime !== bTime) return aTime.localeCompare(bTime);
-      if (a.targetDate !== b.targetDate) return a.targetDate.localeCompare(b.targetDate);
-      return (a.order || 0) - (b.order || 0) || new Date(b.createdAt) - new Date(a.createdAt);
+      if (a.manualOrder && b.manualOrder) return (a.order || 0) - (b.order || 0) || new Date(b.createdAt) - new Date(a.createdAt);
+      if (a.manualOrder !== b.manualOrder) return a.manualOrder ? -1 : 1;
+      const minuteDiff = (Number(b.durationMinutes) || 0) - (Number(a.durationMinutes) || 0);
+      if (minuteDiff) return minuteDiff;
+      if (a.targetDate !== b.targetDate) return b.targetDate.localeCompare(a.targetDate);
+      return new Date(b.createdAt) - new Date(a.createdAt);
     }
 
     function getProjectTaskCount(projectKey, tasks) {
       return tasks.filter((task) => getTaskProjectKey(task) === projectKey).length;
+    }
+
+    function getProjectTaskMinutes(projectKey, tasks) {
+      return sumMinutes(tasks.filter((task) => getTaskProjectKey(task) === projectKey));
     }
 
     function getProjectManualOrder(projectKey, tasks) {
@@ -3026,10 +2969,9 @@
         return (a.order || 0) - (b.order || 0) || new Date(b.createdAt) - new Date(a.createdAt);
       }
       if (a.manualOrder !== b.manualOrder) return a.manualOrder ? -1 : 1;
-      const aTime = a.plannedStart || "99:99";
-      const bTime = b.plannedStart || "99:99";
-      if (aTime !== bTime) return aTime.localeCompare(bTime);
-      return (a.order || 0) - (b.order || 0) || new Date(b.createdAt) - new Date(a.createdAt);
+      const minuteDiff = (Number(b.durationMinutes) || 0) - (Number(a.durationMinutes) || 0);
+      if (minuteDiff) return minuteDiff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
     }
 
     function compareProjects(a, b) {
@@ -3205,21 +3147,27 @@
     }
 
     function normalizeTask(task) {
-      const done = Boolean(task.done);
+      const targetDate = isValidDateString(task.targetDate) ? task.targetDate : formatDate(new Date());
+      const plannedStart = isValidTimeString(task.plannedStart) ? task.plannedStart : "";
+      let timeBucket = normalizeTimeBucket(task.timeBucket);
+      if (!timeBucket && plannedStart) {
+        const section = getTimeSection(plannedStart);
+        timeBucket = section === "上午" ? "morning" : (section === "下午" ? "afternoon" : "evening");
+      }
       return {
         id: task.id || (crypto.randomUUID ? crypto.randomUUID() : `task-${Date.now()}`),
         text: task.text || "",
         note: task.note || "",
         projectId: task.projectId || "",
-        plannedStart: isValidTimeString(task.plannedStart) ? task.plannedStart : "",
-        timeBucket: task.timeBucket || "",
-        targetDate: isValidDateString(task.targetDate) ? task.targetDate : formatDate(new Date()),
-        done,
+        plannedStart,
+        timeBucket: timeBucket || "morning",
+        targetDate,
+        done: true,
         createdAt: task.createdAt || new Date().toISOString(),
-        completedAt: task.completedAt || null,
-        completedDate: isValidDateString(task.completedDate) ? task.completedDate : (done && task.completedAt ? formatDate(task.completedAt) : ""),
+        completedAt: task.completedAt || new Date().toISOString(),
+        completedDate: targetDate,
         durationMinutes: Math.max(0, Number.parseInt(task.durationMinutes || "0", 10) || 0),
-        completionRating: task.completionRating || "",
+        completionRating: getCompletionRating(task.completionRating) ? task.completionRating : "full",
         manualOrder: Boolean(task.manualOrder),
         order: task.order || 9999,
         projectManualOrder: Boolean(task.projectManualOrder),
@@ -3249,13 +3197,16 @@
       return `${hour}:${minute}`;
     }
 
-    function getCompletionRating(value) {
-      const ratings = {
-        baseline: { label: "保底", emoji: "🌱" },
-        partial: { label: "部分", emoji: "◐" },
-        full: { label: "全部", emoji: "🏁" }
+    function getRatingMap() {
+      return {
+        baseline: { label: "保底完成", emoji: "🌱" },
+        partial: { label: "有所推进", emoji: "🌤" },
+        full: { label: "圆满完成", emoji: "🌟" }
       };
-      return ratings[value] || null;
+    }
+
+    function getCompletionRating(value) {
+      return getRatingMap()[value] || null;
     }
 
     function sumMinutes(tasks) {
@@ -3280,17 +3231,22 @@
       return `${mins}m`;
     }
 
+    function getCurrentRangeLabel() {
+      if (state.viewMode === "all") return "全部记录";
+      if ((state.viewMode === "range" || state.viewMode === "calendar") && state.rangeEnd) return `${friendlyDate(state.rangeStart)} - ${friendlyDate(state.rangeEnd)}`;
+      return friendlyDate(state.selectedDate);
+    }
+
     function openTimePie() {
-      const date = state.viewMode === "date" ? state.selectedDate : formatDate(new Date());
-      const tasks = state.tasks.filter((task) => task.targetDate === date && (Number(task.durationMinutes) || 0) > 0);
+      const tasks = getBaseVisibleTasks().filter((task) => (Number(task.durationMinutes) || 0) > 0);
       const groups = groupTasksByProject(tasks);
       const total = sumMinutes(tasks);
-      els.timePieTitle.textContent = `${friendlyDate(date)} 时间分布 · ${formatDuration(total)}`;
+      els.timePieTitle.textContent = `${getCurrentRangeLabel()} 时间分布 · ${formatDuration(total)}`;
 
       els.pieTotal.textContent = formatDuration(total);
       if (!total) {
         els.pieChart.style.setProperty("--pie", "#f2eadb");
-        els.pieLegend.innerHTML = `<div class="empty">当天还没有记录专注时间。</div>`;
+        els.pieLegend.innerHTML = `<div class="empty">当前范围还没有记录投入时间。</div>`;
         els.timePieDialog.showModal();
         return;
       }
