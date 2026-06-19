@@ -359,6 +359,19 @@
       font-weight: 720;
     }
 
+    .project-time-total {
+      width: fit-content;
+      max-width: 100%;
+      padding: 4px 8px;
+      color: rgba(42, 111, 86, 0.86);
+      border: 1px solid rgba(42, 111, 86, 0.2);
+      border-radius: 999px;
+      background: rgba(229, 244, 234, 0.72);
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.2;
+    }
+
     .project-content {
       display: grid;
       align-content: start;
@@ -617,17 +630,21 @@
 
     .main-content {
       display: grid;
-      gap: 12px;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid rgba(227, 200, 155, 0.72);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(255, 253, 247, 0.94), rgba(255, 249, 238, 0.9));
+      box-shadow: 0 12px 28px rgba(91, 58, 24, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82);
     }
 
     .status-panel {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 8px;
-      padding: 8px;
+      padding: 0;
       overflow: hidden;
-      background:
-        linear-gradient(135deg, rgba(255, 247, 232, 0.9), rgba(255, 253, 247, 0.97) 48%, rgba(242, 222, 184, 0.72));
+      background: transparent;
     }
 
     .metric,
@@ -728,6 +745,9 @@
 
     .todo-panel {
       overflow: hidden;
+      border: 1px solid rgba(227, 200, 155, 0.56);
+      border-radius: 9px;
+      background: #fffdf8;
     }
 
     .todo-tools {
@@ -735,7 +755,7 @@
       justify-content: flex-end;
       gap: 8px;
       padding: 10px 14px 0;
-      background: #fffdf7;
+      background: transparent;
     }
 
     .inline-input,
@@ -829,10 +849,10 @@
     }
 
     th:nth-child(1),
-    td:nth-child(1) { width: 138px; }
+    td:nth-child(1) { width: 128px; }
 
     th:nth-child(2),
-    td:nth-child(2) { width: 250px; }
+    td:nth-child(2) { width: 230px; }
 
     th:nth-child(3),
     td:nth-child(3) { width: 150px; }
@@ -847,7 +867,7 @@
     td:nth-child(6) { width: 142px; }
 
     th:nth-child(7),
-    td:nth-child(7) { width: 250px; }
+    td:nth-child(7) { width: 290px; }
 
     th:nth-child(8),
     td:nth-child(8) { width: 90px; }
@@ -880,12 +900,12 @@
     }
 
     .time-section-row td {
-      padding: 7px 14px 5px;
-      color: rgba(138, 104, 79, 0.72);
-      background: linear-gradient(90deg, rgba(223, 193, 139, 0.3), transparent 58%);
-      border-bottom: 1px solid rgba(227, 200, 155, 0.42);
-      font-size: 13px;
-      font-weight: 720;
+      padding: 5px 14px 4px;
+      color: rgba(138, 104, 79, 0.46);
+      background: transparent;
+      border-bottom: 1px solid rgba(227, 200, 155, 0.24);
+      font-size: 12px;
+      font-weight: 680;
     }
 
     .planned-time {
@@ -939,8 +959,11 @@
     }
 
     .drag-handle {
-      color: var(--muted);
-      font-size: 18px;
+      display: inline-flex;
+      width: 18px;
+      margin-right: 10px;
+      color: rgba(138, 104, 79, 0.5);
+      font-size: 16px;
       user-select: none;
     }
 
@@ -1234,6 +1257,26 @@
     .dialog-grid {
       display: grid;
       gap: 10px;
+    }
+
+    #taskDialog .dialog-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    #taskText,
+    #taskNote,
+    #taskDialog .rating-options {
+      grid-column: 1 / -1;
+    }
+
+    #taskText {
+      min-height: 54px;
+      resize: vertical;
+    }
+
+    #taskNote {
+      min-height: 44px;
     }
 
     .field {
@@ -1586,7 +1629,7 @@
             <option value="evening">晚上</option>
           </select>
         </div>
-        <textarea id="taskText" placeholder="事件名称"></textarea>
+        <textarea id="taskText" rows="2" placeholder="事件名称"></textarea>
         <div class="field">
           <label for="taskProject">归属项目</label>
           <select id="taskProject"></select>
@@ -1782,7 +1825,8 @@
         els.rangeEnd.value = state.rangeEnd;
       }
 
-      state.viewMode = state.rangeEnd ? "calendar" : "date";
+      state.ratingFilter = "all";
+      state.viewMode = state.rangeEnd ? "range" : "date";
       render();
     }
 
@@ -1790,6 +1834,7 @@
       state.selectedDate = date;
       state.rangeStart = date;
       state.rangeEnd = "";
+      state.ratingFilter = "all";
       state.viewMode = "date";
       els.rangeStart.value = date;
       els.rangeEnd.value = "";
@@ -1802,6 +1847,7 @@
       state.selectedDate = today;
       state.rangeStart = start;
       state.rangeEnd = today;
+      state.ratingFilter = "all";
       state.viewMode = "range";
       els.rangeStart.value = start;
       els.rangeEnd.value = today;
@@ -1821,11 +1867,19 @@
     }
 
     function toggleAll() {
-      state.viewMode = state.viewMode === "all" ? "date" : "all";
-      if (state.viewMode === "date") {
-        state.rangeEnd = "";
-        els.rangeEnd.value = "";
+      if (state.viewMode === "calendar") {
+        selectSingleDate(formatDate(new Date()));
+        return;
       }
+      const dates = state.tasks.map((task) => task.targetDate).filter(isValidDateString).sort();
+      const today = formatDate(new Date());
+      state.rangeStart = dates[0] || today;
+      state.rangeEnd = dates[dates.length - 1] || today;
+      state.selectedDate = state.rangeEnd;
+      state.ratingFilter = "all";
+      state.viewMode = "calendar";
+      els.rangeStart.value = state.rangeStart;
+      els.rangeEnd.value = state.rangeEnd;
       render();
     }
 
@@ -2597,7 +2651,7 @@
 
       els.todayBtn.classList.toggle("active", state.viewMode === "date" && state.selectedDate === today);
       els.tomorrowBtn.classList.toggle("active", state.viewMode === "range" && state.rangeStart === weekStart && state.rangeEnd === today);
-      els.showAllBtn.textContent = state.viewMode === "all" ? "返回日期" : "全部记录";
+      els.showAllBtn.textContent = state.viewMode === "calendar" ? "返回日期" : "全部记录";
       els.clearRangeBtn.hidden = !state.rangeEnd && state.viewMode !== "calendar";
     }
 
@@ -2622,6 +2676,8 @@
       const draft = isDraftProject(project);
       const countdown = hasProjectDdl(project) ? getDdlCountdown(project.ddl) : { label: "", variant: "waiting-project", longRange: false };
       const scheduleText = mode === "plannedLater" ? "还没想好" : "未安排";
+      const timeTotal = sumMinutes(getBaseVisibleTasks().filter((task) => task.projectId === project.id));
+      const timeMarkup = `<div class="project-time-total">累计 ${formatCompactDuration(timeTotal)}</div>`;
       const scheduleMarkup = hasProjectDdl(project)
         ? `<div class="project-countdown" data-project-field="ddl" title="双击或右键修改 DDL">
               <div class="days-left ${countdown.longRange ? "long-range" : ""}">${countdown.label}</div>
@@ -2633,16 +2689,20 @@
           <div class="project-content">
             <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
             ${scheduleMarkup}
+            ${timeMarkup}
           </div>
         </div>
       `;
     }
 
     function otherProjectCard(count) {
+      const plannedIds = new Set(state.projects.filter((project) => isPlannedLater(project)).map((project) => project.id));
+      const timeTotal = sumMinutes(getBaseVisibleTasks().filter((task) => plannedIds.has(task.projectId)));
       return `
         <button class="project-card other-card" type="button" data-open-project-list>
           <span>待计划</span>
           <span class="other-count">${count} 个还没想好的项目</span>
+          <span class="project-time-total">累计 ${formatCompactDuration(timeTotal)}</span>
         </button>
       `;
     }
