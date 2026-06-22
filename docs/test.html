@@ -2176,6 +2176,17 @@
       overflow: hidden;
     }
 
+    dialog[open] {
+      resize: both;
+      min-width: min(360px, calc(100vw - 28px));
+      min-height: 180px;
+    }
+
+    dialog.is-dragged {
+      margin: 0;
+      position: fixed;
+    }
+
     dialog::backdrop {
       background: rgba(65, 39, 23, 0.38);
     }
@@ -2205,6 +2216,22 @@
       gap: 12px;
       padding: 18px;
       background: #fffdf7;
+      box-sizing: border-box;
+      max-height: inherit;
+      overflow: auto;
+    }
+
+    dialog[open] .dialog-body {
+      max-height: min(760px, calc(100vh - 28px));
+    }
+
+    .dialog-body > h2 {
+      cursor: move;
+      user-select: none;
+    }
+
+    #thoughtPreviewTitle {
+      display: none;
     }
 
     .dialog-body h2 {
@@ -2782,7 +2809,6 @@
       </div>
       <div class="thought-list" id="thoughtList"></div>
       <div class="dialog-actions">
-        <button class="ghost" type="button" id="dayStateCancelBtn">取消</button>
         <button class="primary" type="submit">保存</button>
       </div>
     </form>
@@ -2849,6 +2875,7 @@
     state.preCalendarContext = null;
     state.projectFilterKey = "";
     state.pendingSyncAction = "";
+    state.projectClickTimer = 0;
 
     const els = {
       topbar: document.querySelector("#topbar"),
@@ -2902,7 +2929,6 @@
       moodPicker: document.querySelector("#moodPicker"),
       thoughtText: document.querySelector("#thoughtText"),
       thoughtList: document.querySelector("#thoughtList"),
-      dayStateCancelBtn: document.querySelector("#dayStateCancelBtn"),
       noteDetailDialog: document.querySelector("#noteDetailDialog"),
       noteDetailTitle: document.querySelector("#noteDetailTitle"),
       noteDetailBody: document.querySelector("#noteDetailBody"),
@@ -2967,8 +2993,55 @@
     function attachBackdropClose(dialog) {
       if (!dialog) return;
       dialog.addEventListener("click", (event) => {
-        if (event.target === dialog) dialog.close();
+        if (dialog.dataset.dragMoved === "true") {
+          dialog.dataset.dragMoved = "";
+          return;
+        }
+        if (event.target === dialog || event.target.classList.contains("dialog-body")) {
+          dialog.close();
+        }
       });
+    }
+
+    function makeDialogMovable(dialog) {
+      if (!dialog) return;
+      dialog.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        const target = event.target;
+        const canDrag = target.matches(".dialog-body > h2") || target.classList.contains("dialog-body");
+        if (!canDrag || target.closest("button, input, select, textarea, label, summary, details, .thought-item, .project-list-item, .review-task, .field, .dialog-actions, .note-detail-body, .pie-layout, .mood-picker")) return;
+        const rect = dialog.getBoundingClientRect();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const offsetX = startX - rect.left;
+        const offsetY = startY - rect.top;
+        let moved = false;
+        function onMove(moveEvent) {
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+          if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+          if (!moved) return;
+          const maxLeft = Math.max(8, window.innerWidth - dialog.offsetWidth - 8);
+          const maxTop = Math.max(8, window.innerHeight - dialog.offsetHeight - 8);
+          const nextLeft = Math.min(Math.max(8, moveEvent.clientX - offsetX), maxLeft);
+          const nextTop = Math.min(Math.max(8, moveEvent.clientY - offsetY), maxTop);
+          dialog.classList.add("is-dragged");
+          dialog.style.left = `${nextLeft}px`;
+          dialog.style.top = `${nextTop}px`;
+        }
+        function onUp() {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          if (moved) dialog.dataset.dragMoved = "true";
+        }
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    }
+
+    function prepareDialog(dialog) {
+      attachBackdropClose(dialog);
+      makeDialogMovable(dialog);
     }
 
     function init() {
@@ -3004,13 +3077,16 @@
       els.thoughtList.addEventListener("click", handleThoughtListAction);
       els.thoughtList.addEventListener("dblclick", handleThoughtInlineEdit);
       els.thoughtList.addEventListener("contextmenu", handleThoughtInlineEdit);
-      els.dayStateCancelBtn.addEventListener("click", () => els.dayStateDialog.close());
       els.noteDetailBody.addEventListener("click", handleThoughtListAction);
       els.noteDetailBody.addEventListener("mouseover", scheduleHoverTooltip);
       els.noteDetailBody.addEventListener("mousemove", moveHoverTooltip);
       els.noteDetailBody.addEventListener("mouseout", hideHoverTooltip);
-      attachBackdropClose(els.noteDetailDialog);
-      attachBackdropClose(els.thoughtPreviewDialog);
+      prepareDialog(els.dayStateDialog);
+      prepareDialog(els.noteDetailDialog);
+      prepareDialog(els.thoughtPreviewDialog);
+      prepareDialog(els.projectDialog);
+      prepareDialog(els.taskDialog);
+      prepareDialog(els.timePieDialog);
 
       els.projectRail.addEventListener("click", handleProjectRailClick);
       els.projectRail.addEventListener("dblclick", editProjectField);
@@ -3022,7 +3098,7 @@
       els.projectListBody.addEventListener("click", handleProjectListClick);
       els.projectListBody.addEventListener("dblclick", editProjectField);
       els.projectListBody.addEventListener("contextmenu", editProjectField);
-      attachBackdropClose(els.projectListDialog);
+      prepareDialog(els.projectListDialog);
       els.projectListAddBtn.addEventListener("click", () => {
         state.mergePanelOpen = !state.mergePanelOpen;
         renderProjectListDialog();
@@ -3379,15 +3455,19 @@
         return;
       }
 
-      if (filterCard && !event.target.closest("input, select, textarea") && !event.target.closest("button[data-project-action]")) {
+      if (filterCard && !event.target.closest("input, select, textarea") && !event.target.closest("button[data-project-action]") && !event.target.closest("[data-project-field] select")) {
         const key = filterCard.dataset.projectFilterKey || "";
-        state.projectFilterKey = state.projectFilterKey === key ? "" : key;
-        state.ratingFilter = "all";
-        render();
+        clearTimeout(state.projectClickTimer);
+        state.projectClickTimer = setTimeout(() => {
+          state.projectFilterKey = state.projectFilterKey === key ? "" : key;
+          state.ratingFilter = "all";
+          render();
+        }, 220);
       }
     }
 
     function editProjectField(event) {
+      clearTimeout(state.projectClickTimer);
       if (event.target.closest("button")) return;
       const fieldEl = event.target.closest("[data-project-field]");
       const card = event.target.closest("[data-project-id]");
@@ -4380,6 +4460,7 @@
     }
 
     function renderProjects() {
+      els.manageProjectsBtn.hidden = state.viewMode === "calendar";
       const draftProjects = [...state.projects]
         .filter(isDraftProject)
         .sort(compareProjects);
@@ -5291,7 +5372,7 @@
     function openThoughtDetailDialog() {
       const notes = isSingleDateContext() ? [{ date: state.selectedDate, ...getDayNote(state.selectedDate) }] : getNotesInCurrentRange();
       const withThoughts = notes.filter((note) => note.thoughts.length);
-      els.noteDetailTitle.textContent = isSingleDateContext() ? `${friendlyDate(state.selectedDate)} 想法记录` : "想法记录";
+      els.noteDetailTitle.textContent = "想法记录";
       const exportText = getThoughtExportText(withThoughts);
       const thoughtToolbar = state.account.proActive && withThoughts.length
         ? `<div class="note-detail-toolbar"><button class="ghost" type="button" data-note-action="copy-all-thoughts">一键复制想法</button></div>`
@@ -5335,7 +5416,7 @@
       const editable = options.editable !== false;
       const date = options.date || state.editingDayStateDate || state.selectedDate;
       const actions = editable
-        ? `<button class="thought-action" type="button" data-thought-action="copy" title="复制">⧉</button><button class="thought-action" type="button" data-thought-action="delete" title="删除">×</button>`
+        ? `<button class="thought-action" type="button" data-thought-action="delete" title="删除">×</button>`
         : `<button class="thought-action" type="button" data-thought-action="copy" title="复制">⧉</button>`;
       return `<div class="thought-item" data-date="${escapeHtml(date)}" data-thought-id="${escapeHtml(item.id)}"><time>${formatThoughtTime(item.createdAt)}</time><div class="thought-text-field" data-thought-action="edit" data-tooltip="${escapeHtml(item.text)}" data-tooltip-thought="true" aria-label="${escapeHtml(item.text)}">${escapeHtml(item.text)}</div><div class="thought-actions">${actions}</div></div>`;
     }
@@ -5403,7 +5484,7 @@
       clearTimeout(tooltipTimer);
       els.hoverTooltip.classList.remove("visible");
       els.hoverTooltip.hidden = true;
-      els.thoughtPreviewTitle.textContent = "完整想法";
+      els.thoughtPreviewTitle.textContent = "";
       els.thoughtPreviewMeta.textContent = `${friendlyDate(date)} · ${formatThoughtTime(thought.createdAt)}`;
       els.thoughtPreviewContent.textContent = thought.text;
       els.thoughtPreviewDialog.showModal();
