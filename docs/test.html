@@ -2767,6 +2767,7 @@
         </div>
       </section>
       <div class="dialog-actions">
+        <button class="ghost" type="button" id="projectListCloseBtn">关闭</button>
         <button class="primary" type="button" id="projectListAddBtn">合并项目</button>
       </div>
     </div>
@@ -2792,6 +2793,9 @@
     <div class="dialog-body">
       <h2 id="noteDetailTitle">状态记录</h2>
       <div class="note-detail-body" id="noteDetailBody"></div>
+      <div class="dialog-actions">
+        <button class="primary" type="button" id="noteDetailCloseBtn">关闭</button>
+      </div>
     </div>
   </dialog>
 
@@ -2800,6 +2804,10 @@
       <h2 id="thoughtPreviewTitle">完整想法</h2>
       <div class="thought-preview-meta" id="thoughtPreviewMeta"></div>
       <div class="thought-preview-content" id="thoughtPreviewContent"></div>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="thoughtPreviewCopyBtn">复制</button>
+        <button class="primary" type="button" id="thoughtPreviewCloseBtn">关闭</button>
+      </div>
     </div>
   </dialog>
 
@@ -3004,8 +3012,9 @@
       els.noteDetailBody.addEventListener("mouseover", scheduleHoverTooltip);
       els.noteDetailBody.addEventListener("mousemove", moveHoverTooltip);
       els.noteDetailBody.addEventListener("mouseout", hideHoverTooltip);
-      attachBackdropClose(els.noteDetailDialog);
-      attachBackdropClose(els.thoughtPreviewDialog);
+      els.noteDetailCloseBtn.addEventListener("click", () => els.noteDetailDialog.close());
+      els.thoughtPreviewCopyBtn.addEventListener("click", copyCurrentThoughtPreview);
+      els.thoughtPreviewCloseBtn.addEventListener("click", () => els.thoughtPreviewDialog.close());
 
       els.projectRail.addEventListener("click", handleProjectRailClick);
       els.projectRail.addEventListener("dblclick", editProjectField);
@@ -3017,7 +3026,7 @@
       els.projectListBody.addEventListener("click", handleProjectListClick);
       els.projectListBody.addEventListener("dblclick", editProjectField);
       els.projectListBody.addEventListener("contextmenu", editProjectField);
-      attachBackdropClose(els.projectListDialog);
+      els.projectListCloseBtn.addEventListener("click", () => els.projectListDialog.close());
       els.projectListAddBtn.addEventListener("click", () => {
         state.mergePanelOpen = !state.mergePanelOpen;
         renderProjectListDialog();
@@ -3476,21 +3485,6 @@
       modeSelect.focus();
     }
 
-    function startProjectNameEdit(projectId) {
-      const project = findProject(projectId);
-      const fieldEl = els.projectRail.querySelector(`[data-project-id="${CSS.escape(projectId)}"] [data-project-field="name"]`);
-      if (!project || !fieldEl) return;
-      startInlineEdit(fieldEl, {
-        type: "text",
-        value: project.name,
-        save: (value) => { project.name = value.trim() || "未命名"; }
-      }, () => {
-        saveData();
-        render();
-        if (els.projectListDialog.open) renderProjectListDialog();
-      });
-    }
-
     function createDefaultProject() {
       const hasUnnamed = state.projects.some(isUnnamedProject);
       if (hasUnnamed && !window.confirm("还有未命名项目未处理，仍要继续添加吗？")) return null;
@@ -3504,7 +3498,6 @@
       state.projects.push(project);
       saveData();
       render();
-      requestAnimationFrame(() => startProjectNameEdit(project.id));
       return project;
     }
 
@@ -3608,7 +3601,7 @@
     }
 
     function projectListItem(project) {
-      const ddl = hasProjectDdl(project) ? friendlyDate(project.ddl) : (getProjectScheduleMode(project) === "plannedLater" ? "还没想好" : "设置日期");
+      const ddl = hasProjectDdl(project) ? friendlyDate(project.ddl) : (getProjectScheduleMode(project) === "plannedLater" ? "还没想好" : "未安排");
       return `
         <div class="project-list-item" data-project-id="${project.id}" title="双击或右键修改项目">
           <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
@@ -4392,7 +4385,7 @@
       const mode = getProjectScheduleMode(project);
       const draft = isDraftProject(project);
       const countdown = hasProjectDdl(project) ? getDdlCountdown(project.ddl) : { label: "", variant: "waiting-project", longRange: false };
-      const scheduleText = mode === "plannedLater" ? "还没想好" : "设置日期";
+      const scheduleText = mode === "plannedLater" ? "还没想好" : "未安排";
       const timeTotal = sumMinutes(getProjectRailTasksForCurrentRange().filter((task) => task.projectId === project.id));
       const timeMarkup = `<div class="project-time-total">累计 ${formatCompactDuration(timeTotal)}</div>`;
       const scheduleMarkup = hasProjectDdl(project)
@@ -5400,7 +5393,14 @@
       els.thoughtPreviewTitle.textContent = "完整想法";
       els.thoughtPreviewMeta.textContent = `${friendlyDate(date)} · ${formatThoughtTime(thought.createdAt)}`;
       els.thoughtPreviewContent.textContent = thought.text;
+      els.thoughtPreviewCopyBtn.textContent = "复制";
       els.thoughtPreviewDialog.showModal();
+    }
+
+    function copyCurrentThoughtPreview() {
+      copyText(state.previewThoughtText || "");
+      els.thoughtPreviewCopyBtn.textContent = "已复制";
+      setTimeout(() => { els.thoughtPreviewCopyBtn.textContent = "复制"; }, 1200);
     }
 
     function startThoughtInlineEdit(row) {
