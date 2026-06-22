@@ -1459,6 +1459,31 @@
       padding-right: 2px;
     }
 
+    #thoughtPreviewDialog {
+      width: min(720px, calc(100vw - 28px));
+    }
+
+    .thought-preview-meta {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .thought-preview-content {
+      max-height: min(52vh, 460px);
+      overflow: auto;
+      padding: 14px 15px;
+      border: 1px solid rgba(227, 200, 155, 0.58);
+      border-radius: 9px;
+      background: rgba(255, 253, 247, 0.82);
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 650;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     .mood-chart {
       padding: 10px;
       overflow-x: auto;
@@ -2774,6 +2799,18 @@
     </div>
   </dialog>
 
+  <dialog id="thoughtPreviewDialog">
+    <div class="dialog-body">
+      <h2 id="thoughtPreviewTitle">完整想法</h2>
+      <div class="thought-preview-meta" id="thoughtPreviewMeta"></div>
+      <div class="thought-preview-content" id="thoughtPreviewContent"></div>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="thoughtPreviewCopyBtn">复制</button>
+        <button class="primary" type="button" id="thoughtPreviewCloseBtn">关闭</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="timePieDialog">
     <div class="dialog-body">
       <h2 id="timePieTitle">时间分布</h2>
@@ -2876,6 +2913,12 @@
       noteDetailTitle: document.querySelector("#noteDetailTitle"),
       noteDetailBody: document.querySelector("#noteDetailBody"),
       noteDetailCloseBtn: document.querySelector("#noteDetailCloseBtn"),
+      thoughtPreviewDialog: document.querySelector("#thoughtPreviewDialog"),
+      thoughtPreviewTitle: document.querySelector("#thoughtPreviewTitle"),
+      thoughtPreviewMeta: document.querySelector("#thoughtPreviewMeta"),
+      thoughtPreviewContent: document.querySelector("#thoughtPreviewContent"),
+      thoughtPreviewCopyBtn: document.querySelector("#thoughtPreviewCopyBtn"),
+      thoughtPreviewCloseBtn: document.querySelector("#thoughtPreviewCloseBtn"),
       calendarView: document.querySelector("#calendarView"),
       calendarTitle: document.querySelector("#calendarTitle"),
       calendarGrid: document.querySelector("#calendarGrid"),
@@ -2970,6 +3013,8 @@
       els.noteDetailBody.addEventListener("mousemove", moveHoverTooltip);
       els.noteDetailBody.addEventListener("mouseout", hideHoverTooltip);
       els.noteDetailCloseBtn.addEventListener("click", () => els.noteDetailDialog.close());
+      els.thoughtPreviewCopyBtn.addEventListener("click", copyCurrentThoughtPreview);
+      els.thoughtPreviewCloseBtn.addEventListener("click", () => els.thoughtPreviewDialog.close());
 
       els.projectRail.addEventListener("click", handleProjectRailClick);
       els.projectRail.addEventListener("dblclick", editProjectField);
@@ -3762,11 +3807,13 @@
     function scheduleHoverTooltip(event) {
       const target = event.target.closest("[data-tooltip]");
       const inTooltipArea = els.taskBody.contains(target) || els.thoughtSummary.contains(target) || els.noteDetailBody.contains(target);
-      if (!target || !inTooltipArea || (!target.dataset.tooltipAlways && !isTextOverflowing(target))) return;
+      if (!target || !inTooltipArea || !shouldShowHoverTooltip(target)) return;
       tooltipTarget = target;
       clearTimeout(tooltipTimer);
       tooltipTimer = setTimeout(() => {
-        if (tooltipTarget !== target || (!target.dataset.tooltipAlways && !isTextOverflowing(target))) return;
+        if (tooltipTarget !== target || !shouldShowHoverTooltip(target)) return;
+        const tooltipHost = els.noteDetailBody.contains(target) ? els.noteDetailDialog.querySelector(".dialog-body") : document.body;
+        if (tooltipHost && els.hoverTooltip.parentElement !== tooltipHost) tooltipHost.appendChild(els.hoverTooltip);
         els.hoverTooltip.textContent = target.dataset.tooltip;
         els.hoverTooltip.hidden = false;
         positionHoverTooltip(event);
@@ -3776,6 +3823,13 @@
 
     function isTextOverflowing(element) {
       return element.scrollWidth > element.clientWidth + 1;
+    }
+
+    function shouldShowHoverTooltip(element) {
+      if (element.dataset.tooltipAlways) return true;
+      if (isTextOverflowing(element)) return true;
+      if (element.dataset.tooltipThought) return (element.textContent || "").trim().length > 28;
+      return false;
     }
 
     function moveHoverTooltip(event) {
@@ -5269,7 +5323,7 @@
       const actions = editable
         ? `<button class="thought-action" type="button" data-thought-action="copy" title="复制">⧉</button><button class="thought-action" type="button" data-thought-action="delete" title="删除">×</button>`
         : `<button class="thought-action" type="button" data-thought-action="copy" title="复制">⧉</button>`;
-      return `<div class="thought-item" data-date="${escapeHtml(date)}" data-thought-id="${escapeHtml(item.id)}"><time>${formatThoughtTime(item.createdAt)}</time><div class="thought-text-field" data-thought-action="edit" data-tooltip="${escapeHtml(item.text)}" aria-label="${escapeHtml(item.text)}">${escapeHtml(item.text)}</div><div class="thought-actions">${actions}</div></div>`;
+      return `<div class="thought-item" data-date="${escapeHtml(date)}" data-thought-id="${escapeHtml(item.id)}"><time>${formatThoughtTime(item.createdAt)}</time><div class="thought-text-field" data-thought-action="edit" data-tooltip="${escapeHtml(item.text)}" data-tooltip-thought="true" aria-label="${escapeHtml(item.text)}">${escapeHtml(item.text)}</div><div class="thought-actions">${actions}</div></div>`;
     }
 
     function getThoughtExportText(notes) {
@@ -5302,14 +5356,18 @@
       const action = actionEl.dataset.thoughtAction;
       const row = event.target.closest('.thought-item');
       if (!row) return;
-      if (action === "edit") {
-        if (els.dayStateDialog.open && els.thoughtList.contains(row)) startThoughtInlineEdit(row);
-        return;
-      }
       const date = row.dataset.date;
       const note = getDayNote(date);
       const thought = note.thoughts.find((item) => item.id === row.dataset.thoughtId);
       if (!thought) return;
+      if (action === "edit") {
+        if (els.dayStateDialog.open && els.thoughtList.contains(row)) {
+          startThoughtInlineEdit(row);
+        } else {
+          openThoughtPreview(date, thought);
+        }
+        return;
+      }
       if (action === "copy") {
         copyText(thought.text);
         return;
@@ -5325,6 +5383,24 @@
         }
         render();
       }
+    }
+
+    function openThoughtPreview(date, thought) {
+      clearTimeout(tooltipTimer);
+      els.hoverTooltip.classList.remove("visible");
+      els.hoverTooltip.hidden = true;
+      state.previewThoughtText = thought.text;
+      els.thoughtPreviewTitle.textContent = "完整想法";
+      els.thoughtPreviewMeta.textContent = `${friendlyDate(date)} · ${formatThoughtTime(thought.createdAt)}`;
+      els.thoughtPreviewContent.textContent = thought.text;
+      els.thoughtPreviewCopyBtn.textContent = "复制";
+      els.thoughtPreviewDialog.showModal();
+    }
+
+    function copyCurrentThoughtPreview() {
+      copyText(state.previewThoughtText || "");
+      els.thoughtPreviewCopyBtn.textContent = "已复制";
+      setTimeout(() => { els.thoughtPreviewCopyBtn.textContent = "复制"; }, 1200);
     }
 
     function startThoughtInlineEdit(row) {
