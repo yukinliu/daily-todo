@@ -1444,12 +1444,19 @@
     }
 
     #noteDetailDialog {
-      width: min(760px, calc(100vw - 28px));
+      width: min(980px, calc(100vw - 28px));
+    }
+
+    #noteDetailDialog .dialog-body {
+      max-height: min(78vh, 760px);
     }
 
     .note-detail-body {
       display: grid;
       gap: 12px;
+      max-height: min(62vh, 620px);
+      overflow: auto;
+      padding-right: 2px;
     }
 
     .mood-chart {
@@ -1971,8 +1978,8 @@
 
     .hover-tooltip {
       position: fixed;
-      z-index: 9999;
-      max-width: min(420px, calc(100vw - 32px));
+      z-index: 20000;
+      max-width: min(560px, calc(100vw - 32px));
       padding: 9px 11px;
       color: #fffaf0;
       background: rgba(57, 36, 26, 0.94);
@@ -3795,9 +3802,15 @@
       let top;
 
       if (targetRect && els.noteDetailBody.contains(target)) {
-        left = targetRect.left;
-        top = targetRect.top - tooltipRect.height - offset;
-        if (top < 12) top = targetRect.bottom + offset;
+        const dialogRect = els.noteDetailDialog.getBoundingClientRect();
+        const minLeft = dialogRect.left + 18;
+        const maxLeft = dialogRect.right - tooltipRect.width - 18;
+        const minTop = dialogRect.top + 18;
+        const maxTop = dialogRect.bottom - tooltipRect.height - 18;
+        left = Math.min(Math.max(targetRect.left, minLeft), Math.max(minLeft, maxLeft));
+        const below = targetRect.bottom + offset;
+        const above = targetRect.top - tooltipRect.height - offset;
+        top = below <= maxTop ? below : Math.min(Math.max(above, minTop), Math.max(minTop, maxTop));
       } else {
         left = event.clientX + offset;
         top = event.clientY + offset;
@@ -5154,6 +5167,7 @@
       if (empty) return `<div class="mood-curve ${detailed ? "mood-chart" : ""}"${chartStyle}><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="暂无状态曲线">${guides}</svg></div>`;
       const segments = scored.length === 1 ? "" : scored.slice(1).map((note, index) => {
         const prev = scored[index];
+        if (note.index - prev.index !== 1) return "";
         const avg = (prev.score + note.score) / 2;
         const color = avg > 4 ? "#c68138" : avg < 4 ? "#5f857d" : "#8a684f";
         const x1 = xFor(prev.index);
@@ -5166,8 +5180,22 @@
       }).join("");
       const singlePoint = scored.length === 1 ? `<line class="curve-segment" style="--segment-color:${scored[0].mood.color}" x1="${Math.max(padLeft, xFor(scored[0].index) - 14)}" y1="${yFor(scored[0].score).toFixed(1)}" x2="${Math.min(width - padRight, xFor(scored[0].index) + 14)}" y2="${yFor(scored[0].score).toFixed(1)}"></line>` : "";
       const circles = scored.map((note) => `<circle style="--point-color:${note.mood.color}" cx="${xFor(note.index).toFixed(1)}" cy="${yFor(note.score).toFixed(1)}" r="${detailed ? 5 : 4}"><title>${friendlyDate(note.date)} ${note.mood.label}</title></circle>`).join("");
+      const labelIndexes = new Set();
+      if (detailed) {
+        labelIndexes.add(0);
+        labelIndexes.add(notes.length - 1);
+        notes.forEach((note, index) => { if (note.mood) labelIndexes.add(index); });
+        if (labelIndexes.size > 14) {
+          const moodIndexes = notes.map((note, index) => note.mood ? index : -1).filter((index) => index >= 0);
+          const step = Math.ceil(moodIndexes.length / 10);
+          labelIndexes.clear();
+          labelIndexes.add(0);
+          labelIndexes.add(notes.length - 1);
+          moodIndexes.forEach((index, order) => { if (order % step === 0 || order === moodIndexes.length - 1) labelIndexes.add(index); });
+        }
+      }
       const labels = detailed ? notes.map((note, index) => {
-        if (notes.length > 12 && index % Math.ceil(notes.length / 8) !== 0 && index !== notes.length - 1) return "";
+        if (!labelIndexes.has(index)) return "";
         return `<text x="${xFor(index).toFixed(1)}" y="${height - 7}" text-anchor="middle" fill="#8a684f" font-size="10">${friendlyDate(note.date).replace(/周.*/, "")}</text>`;
       }).join("") : "";
       return `<div class="mood-curve ${detailed ? "mood-chart" : ""}"${chartStyle}><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="整体状态曲线">${guides}${segments}${singlePoint}${circles}${labels}</svg></div>`;
