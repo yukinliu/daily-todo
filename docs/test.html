@@ -196,6 +196,12 @@
       justify-content: flex-end;
     }
 
+    .ghost.active {
+      color: var(--accent);
+      background: rgba(246, 221, 199, 0.82);
+      box-shadow: inset 0 0 0 2px rgba(185, 79, 50, 0.12);
+    }
+
     .account-button {
       min-width: 40px;
       padding-inline: 11px;
@@ -634,6 +640,22 @@
       box-shadow: 0 14px 28px rgba(91, 58, 24, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.82);
     }
 
+    .project-card.is-filtered {
+      border-color: rgba(40, 127, 116, 0.72);
+      box-shadow: 0 0 0 3px rgba(40, 127, 116, 0.13), 0 16px 30px rgba(40, 127, 116, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    }
+
+    .project-card.is-filtered::after {
+      content: "";
+      position: absolute;
+      inset: 10px 10px auto auto;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--teal);
+      box-shadow: 0 0 0 5px rgba(40, 127, 116, 0.12);
+    }
+
     .project-card.has-ddl {
       background:
         radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.72), transparent 28%),
@@ -1038,7 +1060,7 @@
       gap: 18px;
       align-items: center;
       min-height: 72px;
-      margin: 0 0 2px;
+      margin: 0 0 12px;
       padding: 14px 16px;
       border: 1px solid rgba(227, 200, 155, 0.58);
       border-radius: 10px;
@@ -1977,6 +1999,16 @@
       border: 1px solid var(--line);
     }
 
+    .calendar-project.project-highlight {
+      border-color: rgba(40, 127, 116, 0.68);
+      background: linear-gradient(135deg, rgba(221, 240, 230, 0.95), rgba(255, 253, 247, 0.94));
+      box-shadow: inset 4px 0 0 rgba(40, 127, 116, 0.72), 0 6px 14px rgba(40, 127, 116, 0.08);
+    }
+
+    .calendar-project.project-highlight strong {
+      color: var(--teal);
+    }
+
     .calendar-project.unassigned {
       background: rgba(238, 229, 212, 0.46);
       border-color: rgba(138, 104, 79, 0.22);
@@ -2357,9 +2389,16 @@
       </div>
 
       <div class="top-actions">
-        <button type="button" class="ghost" id="showAllBtn">全部记录</button>
+        <button type="button" class="ghost" id="allTimeBtn">全部</button>
+        <button type="button" class="ghost" id="showAllBtn">日历</button>
         <button type="button" class="ghost account-button" id="accountCenterBtn" title="个人中心">个人中心</button>
       </div>
+    </section>
+
+    <section class="day-state-strip" id="dayStateStrip" aria-label="整体状态记录">
+      <div class="mood-summary" id="moodSummary"></div>
+      <div class="thought-summary" id="thoughtSummary"></div>
+      <button class="ghost" type="button" id="openDayStateBtn">记录状态</button>
     </section>
 
     <section class="ddl-strip" aria-label="DDL 项目">
@@ -2379,12 +2418,6 @@
     </section>
 
     <section class="main-content" id="dailyView">
-      <section class="day-state-strip" id="dayStateStrip" aria-label="整体状态记录">
-        <div class="mood-summary" id="moodSummary"></div>
-        <div class="thought-summary" id="thoughtSummary"></div>
-        <button class="ghost" type="button" id="openDayStateBtn">记录状态</button>
-      </section>
-
       <section class="status-panel" aria-label="复盘统计">
         <button class="metric-button active" type="button" id="totalMetricBtn" data-rating-filter="all">
           <span>记录数</span>
@@ -2410,7 +2443,6 @@
 
       <section class="todo-panel" aria-label="事件清单">
         <div class="todo-tools">
-          <button class="ghost" type="button" id="toggleTodoViewBtn">项目视图</button>
           <button class="ghost" type="button" id="resetSortBtn">默认排序</button>
         </div>
         <table id="taskTable">
@@ -2646,7 +2678,7 @@
     state.rangeStart = state.selectedDate;
     state.rangeEnd = "";
     state.viewMode = "date";
-    state.todoListView = localStorage.getItem("daily-todo-list-view") || "time";
+    state.todoListView = "time";
     state.projectListCollapsed = parseStoredJson("daily-project-list-collapsed-v3", {});
     state.editingProjectId = null;
     state.editingTaskId = null;
@@ -2660,6 +2692,8 @@
     state.editingDayStateDate = "";
     state.account = normalizeAccount(state.account);
     state.calendarAnchorDate = "";
+    state.preCalendarContext = null;
+    state.projectFilterKey = "";
     state.pendingSyncAction = "";
 
     const els = {
@@ -2667,6 +2701,7 @@
       tomorrowBtn: document.querySelector("#tomorrowBtn"),
       rangeStart: document.querySelector("#rangeStart"),
       rangeEnd: document.querySelector("#rangeEnd"),
+      allTimeBtn: document.querySelector("#allTimeBtn"),
       showAllBtn: document.querySelector("#showAllBtn"),
       accountCenterBtn: document.querySelector("#accountCenterBtn"),
       accountBackdrop: document.querySelector("#accountBackdrop"),
@@ -2773,7 +2808,8 @@
       els.tomorrowBtn.addEventListener("click", selectWeekToDate);
       els.rangeStart.addEventListener("change", updateDateControls);
       els.rangeEnd.addEventListener("change", updateDateControls);
-      els.showAllBtn.addEventListener("click", toggleAll);
+      els.allTimeBtn.addEventListener("click", selectAllTime);
+      els.showAllBtn.addEventListener("click", toggleCalendarView);
       els.accountCenterBtn.addEventListener("click", openAccountDrawer);
       els.accountCloseBtn.addEventListener("click", closeAccountDrawer);
       els.accountBackdrop.addEventListener("click", closeAccountDrawer);
@@ -2820,7 +2856,7 @@
       els.mergeConfirmBtn.addEventListener("click", mergeProjects);
       els.mergeUndoBtn.addEventListener("click", undoLastMerge);
 
-      els.toggleTodoViewBtn.addEventListener("click", toggleTodoListView);
+      if (els.toggleTodoViewBtn) els.toggleTodoViewBtn.addEventListener("click", toggleTodoListView);
       els.taskHead.addEventListener("click", handleHeaderSort);
       els.taskBody.addEventListener("click", handleTaskClick);
       els.taskBody.addEventListener("mouseover", scheduleHoverTooltip);
@@ -3046,6 +3082,7 @@
 
       state.ratingFilter = "all";
       state.viewMode = state.rangeEnd ? "range" : "date";
+      state.preCalendarContext = null;
       render();
     }
 
@@ -3055,6 +3092,7 @@
       state.rangeEnd = "";
       state.ratingFilter = "all";
       state.viewMode = "date";
+      state.preCalendarContext = null;
       els.rangeStart.value = date;
       els.rangeEnd.value = "";
       render();
@@ -3068,6 +3106,7 @@
       state.rangeEnd = today;
       state.ratingFilter = "all";
       state.viewMode = "range";
+      state.preCalendarContext = null;
       els.rangeStart.value = start;
       els.rangeEnd.value = today;
       render();
@@ -3085,15 +3124,48 @@
       render();
     }
 
-    function toggleAll() {
+    function selectAllTime() {
+      const today = formatDate(new Date());
+      const firstDate = getFirstRecordDate(today);
+      state.rangeStart = firstDate;
+      state.rangeEnd = today;
+      state.selectedDate = today;
+      state.ratingFilter = "all";
+      state.viewMode = firstDate === today ? "date" : "range";
+      state.preCalendarContext = null;
+      els.rangeStart.value = state.rangeStart;
+      els.rangeEnd.value = firstDate === today ? "" : state.rangeEnd;
+      render();
+    }
+
+    function toggleCalendarView() {
       if (state.viewMode === "calendar") {
-        selectSingleDate(formatDate(new Date()));
+        const context = state.preCalendarContext;
+        if (context) {
+          state.selectedDate = context.selectedDate;
+          state.rangeStart = context.rangeStart;
+          state.rangeEnd = context.rangeEnd;
+          state.viewMode = context.viewMode;
+          els.rangeStart.value = state.rangeStart;
+          els.rangeEnd.value = state.rangeEnd;
+        } else {
+          selectSingleDate(formatDate(new Date()));
+          return;
+        }
+        state.preCalendarContext = null;
+        state.ratingFilter = "all";
+        render();
         return;
       }
+
       const today = formatDate(new Date());
-      const dates = getAllRecordDates();
-      const firstDate = dates.find((date) => date <= today) || today;
-      state.rangeStart = firstDate;
+      state.preCalendarContext = {
+        selectedDate: state.selectedDate,
+        rangeStart: state.rangeStart,
+        rangeEnd: state.rangeEnd,
+        viewMode: state.viewMode
+      };
+      state.rangeStart = getFirstRecordDate(today);
       state.rangeEnd = today;
       state.selectedDate = today;
       state.calendarAnchorDate = today;
@@ -3102,6 +3174,11 @@
       els.rangeStart.value = state.rangeStart;
       els.rangeEnd.value = state.rangeEnd;
       render();
+    }
+
+    function getFirstRecordDate(fallback) {
+      const dates = getAllRecordDates().filter((date) => date <= fallback);
+      return dates[0] || fallback;
     }
 
     function getAllRecordDates() {
@@ -3117,19 +3194,20 @@
     function handleProjectRailClick(event) {
       const button = event.target.closest("button[data-project-action]");
       const card = event.target.closest("[data-project-id]");
+      const filterCard = event.target.closest("[data-project-filter-key]");
 
-      if (event.target.closest("[data-open-project-list]")) {
-        openProjectList();
+      if (button && card) {
+        const project = findProject(card.dataset.projectId);
+        if (!project) return;
+        if (button.dataset.projectAction === "delete") deleteProject(project);
         return;
       }
 
-
-      if (!button || !card) return;
-      const project = findProject(card.dataset.projectId);
-      if (!project) return;
-
-      if (button.dataset.projectAction === "delete") {
-        deleteProject(project);
+      if (filterCard && !event.target.closest("input, select, textarea") && !event.target.closest("button[data-project-action]")) {
+        const key = filterCard.dataset.projectFilterKey || "";
+        state.projectFilterKey = state.projectFilterKey === key ? "" : key;
+        state.ratingFilter = "all";
+        render();
       }
     }
 
@@ -3484,7 +3562,7 @@
       els.taskRating.forEach((input) => {
         input.checked = input.value === (task ? task.completionRating || "full" : "full");
       });
-      renderProjectOptions(els.taskProject, task ? task.projectId || "" : "");
+      renderProjectOptions(els.taskProject, task ? task.projectId || "" : getDefaultTaskProjectId());
       els.taskDialog.showModal();
       els.taskText.focus();
     }
@@ -3524,6 +3602,12 @@
     function getDefaultRecordDate() {
       if (state.viewMode === "date") return state.selectedDate;
       return formatDate(new Date());
+    }
+
+    function getDefaultTaskProjectId() {
+      return state.projectFilterKey && state.projectFilterKey !== "__planned_later__" && findProject(state.projectFilterKey)
+        ? state.projectFilterKey
+        : "";
     }
 
     function getCurrentTimeBucket() {
@@ -3919,19 +4003,37 @@
         if (state.viewMode === "calendar" || state.viewMode === "range") return task.targetDate >= state.rangeStart && task.targetDate <= state.rangeEnd;
         return task.targetDate === state.selectedDate;
       });
-      return sortVisibleTasks(visible);
+      return sortVisibleTasks(applyProjectFilter(visible));
     }
 
     function getVisibleTasks() {
       return applyRatingFilter(getBaseVisibleTasks());
     }
 
+    function applyProjectFilter(tasks) {
+      if (!state.projectFilterKey) return tasks;
+      return tasks.filter(taskMatchesProjectFilter);
+    }
+
+    function taskMatchesProjectFilter(task) {
+      if (!state.projectFilterKey) return true;
+      if (state.projectFilterKey === "__planned_later__") {
+        const project = findProject(task.projectId);
+        return project ? isPlannedLater(project) : false;
+      }
+      return task.projectId === state.projectFilterKey;
+    }
+
+    function projectMatchesCalendarFilter(project) {
+      if (!state.projectFilterKey) return false;
+      if (state.projectFilterKey === "__planned_later__") return isPlannedLater(project);
+      return project.id === state.projectFilterKey;
+    }
+
     function sortVisibleTasks(tasks) {
       return [...tasks].sort((a, b) => {
         if (state.sortKey) return compareTasksByHeader(a, b);
-        return state.todoListView === "project"
-          ? compareProjectViewTasks(a, b, tasks)
-          : compareTasks(a, b);
+        return compareTasks(a, b);
       });
     }
 
@@ -3940,6 +4042,7 @@
       renderTopbar();
       renderProjects();
       renderAccountDrawer();
+      renderDayStateStrip();
 
       if (state.viewMode === "calendar") {
         els.dailyView.classList.add("is-hidden");
@@ -4002,9 +4105,11 @@
       const today = formatDate(new Date());
       const weekStart = getWeekStart(today);
 
+      const firstDate = getFirstRecordDate(today);
       els.todayBtn.classList.toggle("active", state.viewMode === "date" && state.selectedDate === today);
       els.tomorrowBtn.classList.toggle("active", state.viewMode === "range" && state.rangeStart === weekStart && state.rangeEnd === today);
-      els.showAllBtn.textContent = state.viewMode === "calendar" ? "返回日期" : "全部记录";
+      els.allTimeBtn.classList.toggle("active", state.viewMode !== "calendar" && state.rangeStart === firstDate && (state.rangeEnd === today || (firstDate === today && !state.rangeEnd)));
+      els.showAllBtn.textContent = state.viewMode === "calendar" ? "返回" : "日历";
     }
 
     function renderProjects() {
@@ -4028,7 +4133,7 @@
       const draft = isDraftProject(project);
       const countdown = hasProjectDdl(project) ? getDdlCountdown(project.ddl) : { label: "", variant: "waiting-project", longRange: false };
       const scheduleText = mode === "plannedLater" ? "还没想好" : "未安排";
-      const timeTotal = sumMinutes(getBaseVisibleTasks().filter((task) => task.projectId === project.id));
+      const timeTotal = sumMinutes(getBaseTasksForCurrentRange().filter((task) => task.projectId === project.id));
       const timeMarkup = `<div class="project-time-total">累计 ${formatCompactDuration(timeTotal)}</div>`;
       const scheduleMarkup = hasProjectDdl(project)
         ? `<div class="project-countdown" data-project-field="ddl" title="双击或右键修改 DDL">
@@ -4037,7 +4142,7 @@
             </div>`
         : `<div class="project-date-placeholder" data-project-field="ddl" title="双击或右键设置日期或待计划">${scheduleText}</div>`;
       return `
-        <div class="project-card has-ddl ${draft ? "waiting-project" : countdown.variant}" data-project-id="${project.id}" data-schedule-mode="${mode}">
+        <div class="project-card has-ddl ${draft ? "waiting-project" : countdown.variant} ${state.projectFilterKey === project.id ? "is-filtered" : ""}" data-project-id="${project.id}" data-project-filter-key="${project.id}" data-schedule-mode="${mode}">
           <div class="project-content">
             <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
             ${scheduleMarkup}
@@ -4049,9 +4154,9 @@
 
     function otherProjectCard(count) {
       const plannedIds = new Set(state.projects.filter((project) => isPlannedLater(project)).map((project) => project.id));
-      const timeTotal = sumMinutes(getBaseVisibleTasks().filter((task) => plannedIds.has(task.projectId)));
+      const timeTotal = sumMinutes(getBaseTasksForCurrentRange().filter((task) => plannedIds.has(task.projectId)));
       return `
-        <button class="project-card other-card" type="button" data-open-project-list>
+        <button class="project-card other-card ${state.projectFilterKey === "__planned_later__" ? "is-filtered" : ""}" type="button" data-project-filter-key="__planned_later__">
           <span>待计划</span>
           <span class="other-count">${count} 个还没想好的项目</span>
           <span class="project-time-total">累计 ${formatCompactDuration(timeTotal)}</span>
@@ -4079,7 +4184,6 @@
     }
 
     function renderDaily() {
-      renderDayStateStrip();
       const baseTasks = getBaseVisibleTasks();
       const visibleTasks = applyRatingFilter(baseTasks);
       const ratingCounts = countRatings(baseTasks);
@@ -4112,12 +4216,9 @@
     }
 
     function renderTaskHeader() {
-      const projectView = state.todoListView === "project";
-      els.taskTable.classList.toggle("project-table-view", projectView);
-      els.toggleTodoViewBtn.textContent = projectView ? "切回时间" : "切回项目";
-      const columns = projectView
-        ? [["project", "项目"], ["text", "事件"], ["timeBucket", "时间"], ["targetDate", "日期"], ["durationMinutes", "投入时间"], ["completionRating", "达成感"], ["note", "备注"]]
-        : [["timeBucket", "时间"], ["text", "事件"], ["project", "项目"], ["targetDate", "日期"], ["durationMinutes", "投入时间"], ["completionRating", "达成感"], ["note", "备注"]];
+      const projectView = false;
+      els.taskTable.classList.toggle("project-table-view", false);
+      const columns = [["timeBucket", "时间"], ["text", "事件"], ["project", "项目"], ["targetDate", "日期"], ["durationMinutes", "投入时间"], ["completionRating", "达成感"], ["note", "备注"]];
       const headers = columns.map(([key, label]) => {
         const active = state.sortKey === key;
         const mark = active && state.sortDir === "desc" ? "↓" : "↑";
@@ -4170,16 +4271,6 @@
     }
 
     function renderTaskRows(tasks) {
-      if (state.todoListView === "project") {
-        if (state.sortKey) return tasks.map((task) => taskRow(task)).join("");
-        let currentGroup = "";
-        return tasks.map((task) => {
-          const groupKey = getTaskProjectKey(task);
-          const divider = groupKey !== currentGroup ? projectSectionRow(task, tasks) : "";
-          currentGroup = groupKey;
-          return divider + taskRow(task);
-        }).join("");
-      }
       let currentSection = "";
       return tasks.map((task) => {
         const section = getTaskDisplaySection(task);
@@ -4261,9 +4352,7 @@
               <button class="icon-button action-danger" type="button" data-action="delete" data-id="${task.id}" title="删除事件" aria-label="删除事件">×</button>
             </div>
           </td>`;
-      const orderedCells = state.todoListView === "project"
-        ? `<td><span class="drag-handle">↕</span>${projectCell}</td><td>${titleCell}</td><td>${timeCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`
-        : `<td><span class="drag-handle">↕</span>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`;
+      const orderedCells = `<td><span class="drag-handle">↕</span>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`;
       return `
         <tr class="task-row done" draggable="true" data-task-id="${task.id}" data-project-key="${getTaskProjectKey(task)}">
           ${orderedCells}
@@ -4340,7 +4429,7 @@
 
     function calendarProject(group) {
       const minutes = sumMinutes(group.tasks);
-      const className = group.project.id ? "calendar-project" : "calendar-project unassigned";
+      const className = `${group.project.id ? "calendar-project" : "calendar-project unassigned"} ${projectMatchesCalendarFilter(group.project) ? "project-highlight" : ""}`;
       return `
         <div class="${className}">
           <strong title="${escapeHtml(group.project.name)}">${escapeHtml(group.project.name)}${group.project.id ? "" : " · 待整理"}</strong>
@@ -4364,8 +4453,6 @@
       });
 
       return [...map.values()].sort((a, b) => {
-        if (!a.project.id && b.project.id) return 1;
-        if (a.project.id && !b.project.id) return -1;
         return sumMinutes(b.tasks) - sumMinutes(a.tasks) || compareProjects(a.project, b.project);
       });
     }
