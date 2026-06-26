@@ -685,6 +685,19 @@
       line-height: 1;
     }
 
+    .project-rail-layout.readonly-rail {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+    }
+
+    .project-rail-layout.readonly-rail::after {
+      right: 0;
+    }
+
+    .project-rail-layout.readonly-rail .project-rail {
+      padding-right: 2px;
+    }
+
     .project-card {
       position: relative;
       display: grid;
@@ -965,8 +978,7 @@
     .project-list {
       display: grid;
       gap: 12px;
-      max-height: min(62vh, 560px);
-      overflow: auto;
+      overflow: visible;
       padding-right: 3px;
       outline: none;
     }
@@ -1045,6 +1057,10 @@
 
     .project-list-item:has(.schedule-editor) {
       grid-template-columns: minmax(190px, 1fr) minmax(340px, 1.25fr) 38px;
+    }
+
+    .project-list-item.is-readonly {
+      grid-template-columns: minmax(190px, 1fr) minmax(150px, 220px);
     }
 
     .project-list-item .project-ddl {
@@ -1447,9 +1463,8 @@
       width: min(980px, calc(100vw - 28px));
     }
 
-    #noteDetailDialog .dialog-body {
-      height: min(78vh, 760px);
-      max-height: min(78vh, 760px);
+    #noteDetailDialog {
+      height: min(82vh, 760px);
     }
 
     .note-detail-body {
@@ -2169,7 +2184,8 @@
 
     dialog {
       width: min(700px, calc(100vw - 28px));
-      max-height: min(760px, calc(100vh - 28px));
+      max-width: calc(100vw - 28px);
+      max-height: calc(100vh - 28px);
       padding: 0;
       border: 0;
       border-radius: 8px;
@@ -2181,7 +2197,7 @@
       display: flex;
       resize: both;
       min-width: min(360px, calc(100vw - 28px));
-      min-height: 180px;
+      min-height: 220px;
     }
 
     dialog.is-dragged {
@@ -2199,6 +2215,7 @@
 
     #projectListDialog {
       width: min(760px, calc(100vw - 28px));
+      height: min(82vh, 760px);
     }
 
     #projectListDialog:focus,
@@ -2217,7 +2234,7 @@
       flex-direction: column;
       gap: 0;
       width: 100%;
-      max-height: min(760px, calc(100vh - 28px));
+      height: 100%;
       padding: 0;
       background: #fffdf7;
       box-sizing: border-box;
@@ -2225,7 +2242,8 @@
     }
 
     dialog[open] .dialog-body {
-      max-height: min(760px, calc(100vh - 28px));
+      height: 100%;
+      max-height: none;
     }
 
     .dialog-titlebar {
@@ -2278,6 +2296,7 @@
       min-height: 0;
       gap: 12px;
       overflow: auto;
+      overscroll-behavior: contain;
       padding: 10px 18px;
     }
 
@@ -2818,7 +2837,6 @@
         <input id="taskNote" type="text" placeholder="备注，可选">
       </div>
       <div class="dialog-actions">
-        <button class="ghost" type="button" id="taskCancelBtn">取消</button>
         <button class="primary" type="submit">保存</button>
       </div>
     </form>
@@ -3047,9 +3065,6 @@
 
     function attachBackdropClose(dialog) {
       if (!dialog) return;
-      dialog.addEventListener("click", (event) => {
-        if (event.target === dialog) dialog.close();
-      });
     }
 
     function normalizeDialogChrome(dialog) {
@@ -3123,6 +3138,31 @@
       normalizeDialogChrome(dialog);
       attachBackdropClose(dialog);
       makeDialogMovable(dialog);
+      makeDialogResizable(dialog);
+    }
+
+    function makeDialogResizable(dialog) {
+      if (!dialog || dialog.dataset.resizeReady === "true") return;
+      dialog.dataset.resizeReady = "true";
+      const nativeShowModal = dialog.showModal.bind(dialog);
+      dialog.showModal = (...args) => {
+        nativeShowModal(...args);
+        requestAnimationFrame(() => {
+          const rect = dialog.getBoundingClientRect();
+          const maxWidth = Math.max(320, window.innerWidth - 28);
+          const maxHeight = Math.max(220, window.innerHeight - 28);
+          if (!dialog.dataset.userSized) {
+            dialog.style.width = `${Math.min(rect.width, maxWidth)}px`;
+            dialog.style.height = `${Math.min(rect.height, maxHeight)}px`;
+          }
+        });
+      };
+      dialog.addEventListener("mousedown", (event) => {
+        const rect = dialog.getBoundingClientRect();
+        const nearRight = event.clientX >= rect.right - 22;
+        const nearBottom = event.clientY >= rect.bottom - 22;
+        if (nearRight || nearBottom) dialog.dataset.userSized = "true";
+      }, true);
     }
 
     function init() {
@@ -3201,7 +3241,7 @@
       els.taskBody.addEventListener("drop", handleDrop);
       els.taskBody.addEventListener("dragend", handleDragEnd);
       els.taskForm.addEventListener("submit", saveTask);
-      els.taskCancelBtn.addEventListener("click", () => els.taskDialog.close());
+      if (els.taskCancelBtn) els.taskCancelBtn.addEventListener("click", () => els.taskDialog.close());
       els.metricButtons.forEach((button) => button.addEventListener("click", () => setRatingFilter(button.dataset.ratingFilter || "all")));
       els.focusTimeBtn.addEventListener("click", openTimePie);
       els.timePieCloseBtn.addEventListener("click", () => els.timePieDialog.close());
@@ -3722,6 +3762,8 @@
     }
 
     function renderProjectListDialog() {
+      const viewOnly = state.viewMode === "calendar";
+      els.projectListDialog.classList.toggle("is-view-only", viewOnly);
       const draftProjects = state.projects.filter(isDraftProject).sort(compareProjects);
       const groups = getProjectListGroups();
       setDefaultProjectListCollapse(draftProjects.length);
@@ -3778,20 +3820,25 @@
     }
 
     function projectListItem(project) {
+      const viewOnly = state.viewMode === "calendar";
       const ddl = hasProjectDdl(project) ? friendlyDate(project.ddl) : (getProjectScheduleMode(project) === "plannedLater" ? "还没想好" : "设置日期");
       return `
-        <div class="project-list-item" data-project-id="${project.id}" title="双击或右键修改项目">
-          <div class="project-name" data-project-field="name" title="双击或右键修改项目名称">${escapeHtml(project.name)}</div>
-          <div class="project-ddl" data-project-field="ddl" title="双击或右键修改 DDL">${ddl}</div>
-          <div class="project-card-actions">
+        <div class="project-list-item ${viewOnly ? "is-readonly" : ""}" data-project-id="${project.id}" title="${viewOnly ? "查看项目" : "双击或右键修改项目"}">
+          <div class="project-name" data-project-field="name" title="${viewOnly ? "查看项目名称" : "双击或右键修改项目名称"}">${escapeHtml(project.name)}</div>
+          <div class="project-ddl" data-project-field="ddl" title="${viewOnly ? "查看 DDL" : "双击或右键修改 DDL"}">${ddl}</div>
+          ${viewOnly ? "" : `<div class="project-card-actions">
             <button class="icon-button" type="button" data-project-action="delete" title="删除项目" aria-label="删除项目">×</button>
-          </div>
+          </div>`}
         </div>
       `;
     }
 
     function renderMergePanel() {
-      els.projectMergePanel.hidden = !state.mergePanelOpen;
+      const viewOnly = state.viewMode === "calendar";
+      if (viewOnly) state.mergePanelOpen = false;
+      els.projectMergePanel.hidden = viewOnly || !state.mergePanelOpen;
+      els.projectListAddBtn.hidden = viewOnly;
+      if (viewOnly) return;
       els.projectListAddBtn.textContent = state.mergePanelOpen ? "收起合并" : "合并项目";
       const options = state.projects
         .slice()
@@ -3857,6 +3904,7 @@
         return;
       }
 
+      if (state.viewMode === "calendar") return;
       const button = event.target.closest("button[data-project-action]");
       const row = event.target.closest("[data-project-id]");
       if (!button || !row) return;
@@ -4544,8 +4592,10 @@
 
     function renderProjects() {
       const calendarMode = state.viewMode === "calendar";
-      els.manageProjectsBtn.hidden = calendarMode;
+      const railLayout = els.projectRail.closest(".project-rail-layout");
+      els.manageProjectsBtn.hidden = false;
       els.addProjectBtn.hidden = calendarMode;
+      railLayout.classList.toggle("readonly-rail", calendarMode);
       const draftProjects = [...state.projects]
         .filter(isDraftProject)
         .sort(compareProjects);
@@ -4555,7 +4605,7 @@
       const plannedLaterCount = state.projects.filter((project) => isPlannedLater(project)).length;
       const cardCount = draftProjects.length + ddlProjects.length + (plannedLaterCount ? 1 : 0);
       els.projectHint.textContent = cardCount > 3 ? "左右滑动查看更多" : "";
-      els.projectRail.closest(".project-rail-layout").classList.toggle("has-overflow", cardCount > 3);
+      railLayout.classList.toggle("has-overflow", cardCount > 3);
       els.projectRail.innerHTML = draftProjects.map(projectCard).join("")
         + ddlProjects.map(projectCard).join("")
         + (plannedLaterCount ? otherProjectCard(plannedLaterCount) : "");
