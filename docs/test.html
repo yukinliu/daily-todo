@@ -1777,6 +1777,73 @@
       cursor: pointer;
     }
 
+    .field-edit-popover {
+      position: fixed;
+      z-index: 80;
+      display: grid;
+      gap: 10px;
+      width: min(var(--popover-width, 420px), calc(100vw - 28px));
+      max-height: min(74vh, 560px);
+      padding: 12px;
+      border: 1px solid rgba(227, 200, 155, 0.72);
+      border-radius: 10px;
+      background: #fffdf7;
+      box-shadow: 0 18px 48px rgba(65, 39, 23, 0.18);
+      color: var(--text);
+    }
+
+    .field-edit-popover label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .field-edit-control {
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      color: var(--text);
+      border: 1px solid rgba(227, 200, 155, 0.74);
+      border-radius: 8px;
+      background: rgba(255, 253, 247, 0.96);
+      font-size: 15px;
+      font-weight: 720;
+      line-height: 1.45;
+    }
+
+    textarea.field-edit-control {
+      min-height: 132px;
+      max-height: min(44vh, 320px);
+      resize: vertical;
+      overflow: auto;
+      font-weight: 650;
+    }
+
+    .field-edit-popover .inline-date-editor {
+      display: grid;
+      grid-template-columns: minmax(96px, 1fr) minmax(74px, 0.75fr) minmax(74px, 0.75fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .field-edit-popover .inline-date-editor select {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 8px;
+      font-size: 15px;
+      font-weight: 720;
+    }
+
+    .field-edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .drag-handle {
+      display: none;
+    }
+
     table {
       width: 100%;
       min-width: 0;
@@ -2647,7 +2714,7 @@
       <div class="section-title">
         <span>DDL 项目</span>
         <span>
-          <button class="ghost" type="button" id="manageProjectsBtn">管理全部项目</button>
+          <button class="ghost" type="button" id="manageProjectsBtn">全部项目</button>
           <span id="projectHint"></span>
         </span>
       </div>
@@ -3236,10 +3303,6 @@
       els.taskBody.addEventListener("dblclick", editTaskField);
       els.taskBody.addEventListener("contextmenu", editTaskField);
       els.resetSortBtn.addEventListener("click", resetDefaultSort);
-      els.taskBody.addEventListener("dragstart", handleDragStart);
-      els.taskBody.addEventListener("dragover", handleDragOver);
-      els.taskBody.addEventListener("drop", handleDrop);
-      els.taskBody.addEventListener("dragend", handleDragEnd);
       els.taskForm.addEventListener("submit", saveTask);
       if (els.taskCancelBtn) els.taskCancelBtn.addEventListener("click", () => els.taskDialog.close());
       els.metricButtons.forEach((button) => button.addEventListener("click", () => setRatingFilter(button.dataset.ratingFilter || "all")));
@@ -4102,7 +4165,7 @@
     }
 
     function editTaskField(event) {
-      if (event.target.closest("button")) return;
+      if (event.target.closest("button, input, select, textarea")) return;
       const fieldEl = event.target.closest("[data-task-field]");
       const row = event.target.closest("tr[data-task-id]");
       if (!fieldEl || !row) return;
@@ -4112,21 +4175,139 @@
       event.preventDefault();
 
       const configByField = {
-        text: { type: "text", value: task.text || "", save: (value) => { task.text = value.trim() || "未命名"; } },
-        note: { type: "text", value: task.note || "", save: (value) => { task.note = value.trim(); } },
-        projectId: { type: "select", value: task.projectId || "", optionsHtml: projectOptionsHtml(task.projectId || ""), save: (value) => { task.projectId = value; } },
-        timeBucket: { type: "select", value: getTaskDisplayBucket(task), optionsHtml: timeBucketOptionsHtml(getTaskDisplayBucket(task)), save: (value) => { task.timeBucket = normalizeTimeBucket(value) || "morning"; task.plannedStart = ""; task.manualOrder = false; } },
-        targetDate: { type: "date", value: task.targetDate || formatDate(new Date()), save: (value) => { task.targetDate = isValidDateString(value) ? value : formatDate(new Date()); task.completedDate = task.targetDate; } },
-        durationMinutes: { type: "number", value: task.durationMinutes || "", save: (value) => { task.durationMinutes = Math.max(0, Number.parseInt(value || "0", 10) || 0); } },
-        completionRating: { type: "select", value: task.completionRating || "full", optionsHtml: ratingOptionsHtml(task.completionRating || "full"), save: (value) => { task.completionRating = value || "full"; } }
+        text: { type: "textarea", label: "事件", width: 540, rows: 4, value: task.text || "", save: (value) => { task.text = value.trim() || "未命名"; } },
+        note: { type: "textarea", label: "备注", width: 560, rows: 5, value: task.note || "", save: (value) => { task.note = value.trim(); } },
+        projectId: { type: "select", label: "归属项目", width: 360, value: task.projectId || "", optionsHtml: projectOptionsHtml(task.projectId || ""), save: (value) => { task.projectId = value; } },
+        timeBucket: { type: "select", label: "时间", width: 280, value: getTaskDisplayBucket(task), optionsHtml: timeBucketOptionsHtml(getTaskDisplayBucket(task)), save: (value) => { task.timeBucket = normalizeTimeBucket(value) || "morning"; task.plannedStart = ""; task.manualOrder = false; } },
+        targetDate: { type: "date", label: "日期", width: 390, value: task.targetDate || formatDate(new Date()), save: (value) => { task.targetDate = isValidDateString(value) ? value : formatDate(new Date()); task.completedDate = task.targetDate; } },
+        durationMinutes: { type: "number", label: "投入时间（分钟）", width: 300, value: task.durationMinutes || "", save: (value) => { task.durationMinutes = Math.max(0, Number.parseInt(value || "0", 10) || 0); } },
+        completionRating: { type: "select", label: "完成情况", width: 340, value: task.completionRating || "full", optionsHtml: ratingOptionsHtml(task.completionRating || "full"), save: (value) => { task.completionRating = value || "full"; } }
       };
       const config = configByField[field];
       if (!config) return;
 
-      startInlineEdit(fieldEl, config, () => {
+      openTaskFieldPopover(fieldEl, config, () => {
         saveData();
         render();
       });
+    }
+
+    function closeTaskFieldPopover(shouldSave = false) {
+      const popover = document.querySelector(".field-edit-popover");
+      if (!popover) return;
+      const api = popover._fieldEditor;
+      if (api && shouldSave) api.save();
+      popover.remove();
+      document.removeEventListener("mousedown", handleTaskPopoverOutside, true);
+      window.removeEventListener("resize", handleTaskPopoverViewportChange);
+      window.removeEventListener("scroll", handleTaskPopoverViewportChange, true);
+    }
+
+    function handleTaskPopoverViewportChange() {
+      closeTaskFieldPopover(false);
+    }
+
+    function handleTaskPopoverOutside(event) {
+      const popover = document.querySelector(".field-edit-popover");
+      if (!popover || popover.contains(event.target) || event.target.closest("[data-task-field]")) return;
+      closeTaskFieldPopover(true);
+    }
+
+    function openTaskFieldPopover(fieldEl, config, afterSave) {
+      closeTaskFieldPopover(false);
+      const popover = document.createElement("div");
+      popover.className = "field-edit-popover";
+      popover.style.setProperty("--popover-width", `${config.width || 420}px`);
+
+      const label = document.createElement("label");
+      label.textContent = config.label || "修改";
+      popover.append(label);
+
+      let control;
+      if (config.type === "date") {
+        const currentYear = new Date().getFullYear();
+        const editor = createDatePartsEditor(config.value || formatDate(new Date()), {
+          className: "inline-date-editor task-date-editor",
+          startYear: currentYear - 10,
+          endYear: currentYear + 10
+        });
+        control = editor;
+        popover.append(editor.el);
+      } else if (config.type === "select") {
+        control = document.createElement("select");
+        control.className = "field-edit-control";
+        control.innerHTML = config.optionsHtml || "";
+        control.value = config.value || "";
+        popover.append(control);
+      } else if (config.type === "textarea") {
+        control = document.createElement("textarea");
+        control.className = "field-edit-control";
+        control.rows = config.rows || 4;
+        control.value = config.value || "";
+        popover.append(control);
+      } else {
+        control = document.createElement("input");
+        control.className = "field-edit-control";
+        control.type = config.type || "text";
+        control.value = config.value || "";
+        if (config.type === "number") {
+          control.min = "0";
+          control.step = "1";
+        }
+        popover.append(control);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "field-edit-actions";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "ghost";
+      cancel.textContent = "取消";
+      const save = document.createElement("button");
+      save.type = "button";
+      save.className = "primary";
+      save.textContent = "保存";
+      actions.append(cancel, save);
+      popover.append(actions);
+
+      const getValue = () => config.type === "date" ? control.getValue() : control.value;
+      popover._fieldEditor = {
+        save: () => {
+          config.save(getValue());
+          afterSave();
+        }
+      };
+
+      cancel.addEventListener("click", () => closeTaskFieldPopover(false));
+      save.addEventListener("click", () => closeTaskFieldPopover(true));
+      popover.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeTaskFieldPopover(false);
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey || config.type !== "textarea")) {
+          event.preventDefault();
+          closeTaskFieldPopover(true);
+        }
+      });
+
+      document.body.append(popover);
+      positionTaskFieldPopover(popover, fieldEl);
+      setTimeout(() => document.addEventListener("mousedown", handleTaskPopoverOutside, true), 0);
+      window.addEventListener("resize", handleTaskPopoverViewportChange);
+      window.addEventListener("scroll", handleTaskPopoverViewportChange, true);
+      const focusTarget = config.type === "date" ? control.el.querySelector("select") : control;
+      focusTarget?.focus();
+      if (focusTarget?.select && ["textarea", "text", "number"].includes(config.type)) focusTarget.select();
+    }
+
+    function positionTaskFieldPopover(popover, fieldEl) {
+      const rect = fieldEl.getBoundingClientRect();
+      const popRect = popover.getBoundingClientRect();
+      const gap = 8;
+      let left = rect.left;
+      let top = rect.bottom + gap;
+      if (left + popRect.width > window.innerWidth - 14) left = window.innerWidth - popRect.width - 14;
+      if (top + popRect.height > window.innerHeight - 14) top = rect.top - popRect.height - gap;
+      popover.style.left = `${Math.max(14, left)}px`;
+      popover.style.top = `${Math.max(14, top)}px`;
     }
 
     function startTimePartsEdit(fieldEl, config, afterSave) {
@@ -4844,9 +5025,9 @@
               <button class="icon-button action-danger" type="button" data-action="delete" data-id="${task.id}" title="删除事件" aria-label="删除事件">×</button>
             </div>
           </td>`;
-      const orderedCells = `<td><span class="drag-handle">↕</span>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`;
+      const orderedCells = `<td>${timeCell}</td><td>${titleCell}</td><td>${projectCell}</td><td>${dateCell}</td><td>${durationCell}</td><td>${ratingCell}</td><td>${noteCell}</td>${actionCell}`;
       return `
-        <tr class="task-row done" draggable="true" data-task-id="${task.id}" data-project-key="${getTaskProjectKey(task)}">
+        <tr class="task-row done" data-task-id="${task.id}" data-project-key="${getTaskProjectKey(task)}">
           ${orderedCells}
         </tr>
       `;
