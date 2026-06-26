@@ -1781,10 +1781,11 @@
       position: fixed;
       z-index: 80;
       display: grid;
-      gap: 10px;
-      width: min(var(--popover-width, 420px), calc(100vw - 28px));
-      max-height: min(74vh, 560px);
-      padding: 12px;
+      gap: 8px;
+      width: min(var(--popover-width, 320px), calc(100vw - 28px));
+      max-height: min(74vh, 440px);
+      padding: 10px;
+      overflow: auto;
       border: 1px solid rgba(227, 200, 155, 0.72);
       border-radius: 10px;
       background: #fffdf7;
@@ -1796,6 +1797,11 @@
       color: var(--muted);
       font-size: 12px;
       font-weight: 780;
+    }
+
+    .field-edit-popover.quick-menu {
+      gap: 6px;
+      padding: 8px;
     }
 
     .field-edit-control {
@@ -1812,32 +1818,99 @@
     }
 
     textarea.field-edit-control {
-      min-height: 132px;
-      max-height: min(44vh, 320px);
+      min-height: 168px;
+      max-height: min(48vh, 380px);
       resize: vertical;
       overflow: auto;
       font-weight: 650;
     }
 
-    .field-edit-popover .inline-date-editor {
+    .task-field-dialog .dialog-content {
       display: grid;
-      grid-template-columns: minmax(96px, 1fr) minmax(74px, 0.75fr) minmax(74px, 0.75fr);
-      gap: 8px;
-      width: 100%;
+      gap: 12px;
     }
 
-    .field-edit-popover .inline-date-editor select {
+    .task-field-dialog .inline-date-editor {
+      display: grid;
+      grid-template-columns: minmax(116px, 1fr) minmax(86px, 0.75fr) minmax(86px, 0.75fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .task-field-dialog .inline-date-editor select {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      font-size: 16px;
+      font-weight: 760;
+    }
+
+    .quick-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
       width: 100%;
       min-height: 38px;
-      padding: 7px 8px;
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 760;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .quick-option:hover,
+    .quick-option.is-selected {
+      border-color: rgba(126, 172, 154, 0.46);
+      background: rgba(220, 239, 230, 0.64);
+      color: var(--green-dark);
+    }
+
+    .quick-option .quick-meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .quick-duration-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .quick-duration-grid .quick-option {
+      justify-content: center;
+      text-align: center;
+    }
+
+    .quick-custom {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding-top: 4px;
+      border-top: 1px solid rgba(227, 200, 155, 0.42);
+    }
+
+    .quick-custom input {
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid rgba(227, 200, 155, 0.74);
+      border-radius: 8px;
+      background: rgba(255, 253, 247, 0.96);
       font-size: 15px;
       font-weight: 720;
     }
 
-    .field-edit-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
+    .quick-custom button {
+      min-height: 38px;
+      padding: 0 12px;
+      font-size: 14px;
     }
 
     .drag-handle {
@@ -4175,55 +4248,63 @@
       event.preventDefault();
 
       const configByField = {
-        text: { type: "textarea", label: "事件", width: 540, rows: 4, value: task.text || "", save: (value) => { task.text = value.trim() || "未命名"; } },
-        note: { type: "textarea", label: "备注", width: 560, rows: 5, value: task.note || "", save: (value) => { task.note = value.trim(); } },
-        projectId: { type: "select", label: "归属项目", width: 360, value: task.projectId || "", optionsHtml: projectOptionsHtml(task.projectId || ""), save: (value) => { task.projectId = value; } },
-        timeBucket: { type: "select", label: "时间", width: 280, value: getTaskDisplayBucket(task), optionsHtml: timeBucketOptionsHtml(getTaskDisplayBucket(task)), save: (value) => { task.timeBucket = normalizeTimeBucket(value) || "morning"; task.plannedStart = ""; task.manualOrder = false; } },
-        targetDate: { type: "date", label: "日期", width: 390, value: task.targetDate || formatDate(new Date()), save: (value) => { task.targetDate = isValidDateString(value) ? value : formatDate(new Date()); task.completedDate = task.targetDate; } },
-        durationMinutes: { type: "number", label: "投入时间（分钟）", width: 300, value: task.durationMinutes || "", save: (value) => { task.durationMinutes = Math.max(0, Number.parseInt(value || "0", 10) || 0); } },
-        completionRating: { type: "select", label: "完成情况", width: 340, value: task.completionRating || "full", optionsHtml: ratingOptionsHtml(task.completionRating || "full"), save: (value) => { task.completionRating = value || "full"; } }
+        text: { type: "textarea", label: "事件", rows: 5, value: task.text || "", save: (value) => { task.text = value.trim() || "未命名"; } },
+        note: { type: "textarea", label: "备注", rows: 6, value: task.note || "", save: (value) => { task.note = value.trim(); } },
+        projectId: { type: "project", label: "归属项目", width: 300, value: task.projectId || "", save: (value) => { task.projectId = value; } },
+        timeBucket: { type: "timeBucket", label: "时间", width: 220, value: getTaskDisplayBucket(task), save: (value) => { task.timeBucket = normalizeTimeBucket(value) || "morning"; task.plannedStart = ""; task.manualOrder = false; } },
+        targetDate: { type: "date", label: "日期", value: task.targetDate || formatDate(new Date()), save: (value) => { task.targetDate = isValidDateString(value) ? value : formatDate(new Date()); task.completedDate = task.targetDate; } },
+        durationMinutes: { type: "duration", label: "投入时间", width: 260, value: task.durationMinutes || "", save: (value) => { task.durationMinutes = Math.max(0, Number.parseInt(value || "0", 10) || 0); } },
+        completionRating: { type: "rating", label: "完成情况", width: 280, value: task.completionRating || "full", save: (value) => { task.completionRating = value || "full"; } }
       };
       const config = configByField[field];
       if (!config) return;
 
-      openTaskFieldPopover(fieldEl, config, () => {
+      const afterSave = () => {
         saveData();
         render();
+      };
+
+      if (["textarea", "date"].includes(config.type)) {
+        openTaskFieldDialog(config, afterSave);
+      } else {
+        openTaskQuickMenu(fieldEl, config, afterSave);
+      }
+    }
+
+    function getTaskFieldDialog() {
+      let dialog = document.getElementById("taskFieldDialog");
+      if (dialog) return dialog;
+      dialog = document.createElement("dialog");
+      dialog.id = "taskFieldDialog";
+      dialog.className = "task-field-dialog";
+      dialog.innerHTML = `
+        <form class="dialog-body" id="taskFieldForm" novalidate>
+          <h2 id="taskFieldTitle">修改</h2>
+          <div id="taskFieldBody"></div>
+          <div class="dialog-actions"><button class="primary" type="submit">保存</button></div>
+        </form>
+      `;
+      document.body.append(dialog);
+      prepareDialog(dialog);
+      dialog.addEventListener("close", () => {
+        const body = dialog.querySelector("#taskFieldBody");
+        body?.replaceChildren();
       });
+      return dialog;
     }
 
-    function closeTaskFieldPopover(shouldSave = false) {
-      const popover = document.querySelector(".field-edit-popover");
-      if (!popover) return;
-      const api = popover._fieldEditor;
-      if (api && shouldSave) api.save();
-      popover.remove();
-      document.removeEventListener("mousedown", handleTaskPopoverOutside, true);
-      window.removeEventListener("resize", handleTaskPopoverViewportChange);
-      window.removeEventListener("scroll", handleTaskPopoverViewportChange, true);
-    }
+    function openTaskFieldDialog(config, afterSave) {
+      closeTaskFieldPopover();
+      const dialog = getTaskFieldDialog();
+      const title = dialog.querySelector(".dialog-titlebar h2") || dialog.querySelector("#taskFieldTitle");
+      const body = dialog.querySelector("#taskFieldBody");
+      const form = dialog.querySelector("#taskFieldForm");
+      if (!title || !body || !form) return;
+      title.textContent = config.label || "修改";
+      body.replaceChildren();
 
-    function handleTaskPopoverViewportChange() {
-      closeTaskFieldPopover(false);
-    }
-
-    function handleTaskPopoverOutside(event) {
-      const popover = document.querySelector(".field-edit-popover");
-      if (!popover || popover.contains(event.target) || event.target.closest("[data-task-field]")) return;
-      closeTaskFieldPopover(true);
-    }
-
-    function openTaskFieldPopover(fieldEl, config, afterSave) {
-      closeTaskFieldPopover(false);
-      const popover = document.createElement("div");
-      popover.className = "field-edit-popover";
-      popover.style.setProperty("--popover-width", `${config.width || 420}px`);
-
-      const label = document.createElement("label");
-      label.textContent = config.label || "修改";
-      popover.append(label);
-
-      let control;
+      let getValue;
+      let focusTarget;
       if (config.type === "date") {
         const currentYear = new Date().getFullYear();
         const editor = createDatePartsEditor(config.value || formatDate(new Date()), {
@@ -4231,71 +4312,159 @@
           startYear: currentYear - 10,
           endYear: currentYear + 10
         });
-        control = editor;
-        popover.append(editor.el);
-      } else if (config.type === "select") {
-        control = document.createElement("select");
-        control.className = "field-edit-control";
-        control.innerHTML = config.optionsHtml || "";
-        control.value = config.value || "";
-        popover.append(control);
-      } else if (config.type === "textarea") {
-        control = document.createElement("textarea");
-        control.className = "field-edit-control";
-        control.rows = config.rows || 4;
-        control.value = config.value || "";
-        popover.append(control);
+        body.append(editor.el);
+        getValue = editor.getValue;
+        focusTarget = () => editor.focus();
       } else {
-        control = document.createElement("input");
+        const control = document.createElement("textarea");
         control.className = "field-edit-control";
-        control.type = config.type || "text";
+        control.rows = config.rows || 5;
         control.value = config.value || "";
-        if (config.type === "number") {
-          control.min = "0";
-          control.step = "1";
-        }
-        popover.append(control);
+        control.placeholder = config.label || "输入";
+        body.append(control);
+        getValue = () => control.value;
+        focusTarget = () => {
+          control.focus();
+          control.select();
+        };
       }
 
-      const actions = document.createElement("div");
-      actions.className = "field-edit-actions";
-      const cancel = document.createElement("button");
-      cancel.type = "button";
-      cancel.className = "ghost";
-      cancel.textContent = "取消";
-      const save = document.createElement("button");
-      save.type = "button";
-      save.className = "primary";
-      save.textContent = "保存";
-      actions.append(cancel, save);
-      popover.append(actions);
-
-      const getValue = () => config.type === "date" ? control.getValue() : control.value;
-      popover._fieldEditor = {
-        save: () => {
-          config.save(getValue());
-          afterSave();
-        }
+      form.onsubmit = (event) => {
+        event.preventDefault();
+        config.save(getValue());
+        afterSave();
+        dialog.close();
       };
 
-      cancel.addEventListener("click", () => closeTaskFieldPopover(false));
-      save.addEventListener("click", () => closeTaskFieldPopover(true));
-      popover.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeTaskFieldPopover(false);
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey || config.type !== "textarea")) {
-          event.preventDefault();
-          closeTaskFieldPopover(true);
-        }
-      });
+      if (!dialog.open) dialog.showModal();
+      requestAnimationFrame(() => focusTarget?.());
+    }
+
+    function closeTaskFieldPopover() {
+      const popover = document.querySelector(".field-edit-popover");
+      if (!popover) return;
+      popover.remove();
+      document.removeEventListener("mousedown", handleTaskPopoverOutside, true);
+      document.removeEventListener("keydown", handleTaskPopoverKeydown, true);
+      window.removeEventListener("resize", handleTaskPopoverViewportChange);
+      window.removeEventListener("scroll", handleTaskPopoverViewportChange, true);
+    }
+
+    function handleTaskPopoverViewportChange() {
+      closeTaskFieldPopover();
+    }
+
+    function handleTaskPopoverKeydown(event) {
+      if (event.key === "Escape") closeTaskFieldPopover();
+    }
+
+    function handleTaskPopoverOutside(event) {
+      const popover = document.querySelector(".field-edit-popover");
+      if (!popover || popover.contains(event.target) || event.target.closest("[data-task-field]")) return;
+      closeTaskFieldPopover();
+    }
+
+    function openTaskQuickMenu(fieldEl, config, afterSave) {
+      closeTaskFieldPopover();
+      const popover = document.createElement("div");
+      popover.className = "field-edit-popover quick-menu";
+      popover.style.setProperty("--popover-width", `${config.width || 280}px`);
+
+      const saveAndClose = (value) => {
+        config.save(value);
+        closeTaskFieldPopover();
+        afterSave();
+      };
+
+      const label = document.createElement("label");
+      label.textContent = config.label || "修改";
+      popover.append(label);
+
+      if (config.type === "timeBucket") {
+        [
+          ["morning", "上午"],
+          ["afternoon", "下午"],
+          ["evening", "晚上"]
+        ].forEach(([value, text]) => popover.append(createQuickOption(text, value, value === config.value, saveAndClose)));
+      } else if (config.type === "project") {
+        getProjectQuickOptions(config.value).forEach((option) => {
+          popover.append(createQuickOption(option.label, option.value, option.value === config.value, saveAndClose, option.meta));
+        });
+      } else if (config.type === "rating") {
+        Object.entries(getRatingMap()).forEach(([value, rating]) => {
+          popover.append(createQuickOption(`${rating.emoji} ${rating.label}`, value, value === config.value, saveAndClose));
+        });
+      } else if (config.type === "duration") {
+        const grid = document.createElement("div");
+        grid.className = "quick-duration-grid";
+        ["", 15, 30, 45, 60, 90, 120].forEach((minutes) => {
+          const label = minutes === "" ? "未填写" : formatDuration(minutes);
+          grid.append(createQuickOption(label, String(minutes), String(minutes) === String(config.value || ""), saveAndClose));
+        });
+        popover.append(grid);
+
+        const custom = document.createElement("div");
+        custom.className = "quick-custom";
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = "0";
+        input.step = "1";
+        input.inputMode = "numeric";
+        input.placeholder = "输入分钟";
+        input.value = config.value || "";
+        const ok = document.createElement("button");
+        ok.type = "button";
+        ok.className = "primary";
+        ok.textContent = "确定";
+        const submitCustom = () => saveAndClose(input.value);
+        ok.addEventListener("click", submitCustom);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            submitCustom();
+          }
+        });
+        custom.append(input, ok);
+        popover.append(custom);
+      }
 
       document.body.append(popover);
       positionTaskFieldPopover(popover, fieldEl);
-      setTimeout(() => document.addEventListener("mousedown", handleTaskPopoverOutside, true), 0);
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleTaskPopoverOutside, true);
+        document.addEventListener("keydown", handleTaskPopoverKeydown, true);
+      }, 0);
       window.addEventListener("resize", handleTaskPopoverViewportChange);
       window.addEventListener("scroll", handleTaskPopoverViewportChange, true);
-      const focusTarget = config.type === "date" ? control.el.querySelector("select") : control;
-      focusTarget?.focus();
-      if (focusTarget?.select && ["textarea", "text", "number"].includes(config.type)) focusTarget.select();
+      const firstSelected = popover.querySelector(".quick-option.is-selected") || popover.querySelector(".quick-option") || popover.querySelector("input");
+      firstSelected?.focus();
+    }
+
+    function createQuickOption(label, value, selected, onSelect, meta = "") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `quick-option${selected ? " is-selected" : ""}`;
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = label;
+      button.append(labelSpan);
+      if (meta) {
+        const metaSpan = document.createElement("span");
+        metaSpan.className = "quick-meta";
+        metaSpan.textContent = meta;
+        button.append(metaSpan);
+      }
+      button.addEventListener("click", () => onSelect(value));
+      return button;
+    }
+
+    function getProjectQuickOptions(selectedValue = "") {
+      const select = document.createElement("select");
+      select.innerHTML = projectOptionsHtml(selectedValue);
+      return Array.from(select.options).map((option) => ({
+        value: option.value,
+        label: option.textContent || UNASSIGNED_PROJECT,
+        meta: option.value ? "" : "默认"
+      }));
     }
 
     function positionTaskFieldPopover(popover, fieldEl) {
