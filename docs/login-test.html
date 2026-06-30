@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DayLog 登录测试</title>
+    <style>
+        body { font-family: Arial; padding: 40px; max-width: 400px; margin: auto; }
+        input, button { display: block; width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+        .message { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h2>登录测试</h2>
+    <div id="loginPanel">
+        <input type="email" id="email" placeholder="邮箱">
+        <input type="password" id="password" placeholder="密码">
+        <button id="loginBtn">登录</button>
+        <p><a href="#" id="switchToRegister">还没有账号？去注册</a></p>
+    </div>
+    <div id="registerPanel" class="hidden">
+        <input type="email" id="regEmail" placeholder="邮箱">
+        <input type="text" id="regCode" placeholder="验证码">
+        <button id="sendCodeBtn">获取验证码</button>
+        <input type="password" id="regPassword" placeholder="密码（不少于6位）">
+        <button id="registerBtn">注册</button>
+        <p><a href="#" id="switchToLogin">已有账号？去登录</a></p>
+    </div>
+    <div class="message" id="msg"></div>
+
+    <script>
+        const API_URL = 'https://daylog-d3gkb5k6y8cbd1a32-1316024752.ap-shanghai.app.tcloudbase.com/auth'
+
+        const loginPanel = document.getElementById('loginPanel')
+        const registerPanel = document.getElementById('registerPanel')
+        const msg = document.getElementById('msg')
+
+        function showMsg(text) { msg.textContent = text }
+
+        // 切换
+        document.getElementById('switchToRegister').addEventListener('click', (e) => {
+            e.preventDefault()
+            loginPanel.classList.add('hidden')
+            registerPanel.classList.remove('hidden')
+        })
+        document.getElementById('switchToLogin').addEventListener('click', (e) => {
+            e.preventDefault()
+            registerPanel.classList.add('hidden')
+            loginPanel.classList.remove('hidden')
+        })
+
+        // 登录
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value.trim()
+            const password = document.getElementById('password').value.trim()
+            if (!email || !password) { showMsg('请填写完整'); return }
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'login', email, password })
+                })
+                const data = await res.json()
+                showMsg(JSON.stringify(data))
+            } catch (e) { showMsg('网络错误') }
+        })
+
+        // 发送验证码
+        document.getElementById('sendCodeBtn').addEventListener('click', async () => {
+            const email = document.getElementById('regEmail').value.trim()
+            if (!email) { showMsg('请输入邮箱'); return }
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'sendCode', email, type: 'register' })
+                })
+                const data = await res.json()
+                showMsg(JSON.stringify(data))
+            } catch (e) { showMsg('网络错误') }
+        })
+
+        // 注册
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const email = document.getElementById('regEmail').value.trim()
+            const code = document.getElementById('regCode').value.trim()
+            const password = document.getElementById('regPassword').value.trim()
+            if (!email || !code || !password) { showMsg('请填写完整'); return }
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'register', email, password, code })
+                })
+                const data = await res.json()
+                showMsg(JSON.stringify(data))
+            } catch (e) { showMsg('网络错误') }
+        })
+    </script>
+</body>
+</html>
